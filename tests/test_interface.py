@@ -114,6 +114,30 @@ class Reconstruction(unittest.TestCase):
         self.assertEqual(nouveau.curseur, 1)
 
 
+class CopieIntegraleAnnoncee(unittest.TestCase):
+    """§6.2 : une partition non reconnue est copiée en entier ; au-delà de 1 Go, la
+    confirmation le dit, parce que la durée en dépend."""
+
+    def plan(self):
+        from types import SimpleNamespace
+        from unittest import mock
+
+        from clonegator.devices import Partition
+        from clonegator.ui import app
+        petite = Partition(1, "/dev/x1", 16_000_000, None, None, None, None, None)
+        chiffree = Partition(2, "/dev/x2", 400_000_000_000, "BitLocker", None, None, None, None)
+        disque = SimpleNamespace(chemin="/dev/x", taille=480_000_000_000, partitions=[petite, chiffree])
+        table = SimpleNamespace(entrees=[SimpleNamespace(numero=1, etendue=False),
+                                         SimpleNamespace(numero=2, etendue=False)])
+        with mock.patch.object(app.layout, "lire", return_value=table):
+            return app._Plan(disque, brut=False)
+
+    def test_la_grosse_partition_est_annoncee_la_petite_non(self):
+        textes = [ligne.texte() for ligne in self.plan().lignes(150e6)]
+        self.assertTrue(any("Partition 2" in texte and "copie intégrale" in texte for texte in textes))
+        self.assertFalse(any("Partition 1" in texte for texte in textes))
+
+
 class Formulaires(unittest.TestCase):
     def test_saisie_effacement_et_validation(self):
         formulaire = Formulaire("", [Champ("hote", "Hôte", "10.0.0."),

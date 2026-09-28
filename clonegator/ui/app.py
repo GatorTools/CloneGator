@@ -37,6 +37,10 @@ _log = logging.getLogger("clonegator.ui")
 DEBIT_LECTURE = 150e6
 DEBIT_SAUVEGARDE = {False: 100e6, True: 55e6}  # disque USB, partage réseau
 
+# Une partition non reconnue, copiée en entier, est annoncée à la confirmation
+# au-delà de cette taille (§6.2).
+SEUIL_COPIE_BRUTE_ANNONCEE = 1_000_000_000
+
 # Largeur de la colonne des libellés dans les écrans de confirmation et de rapport.
 COLONNE = 14
 
@@ -849,6 +853,11 @@ class _Plan:
             self.volume += volume
             if choix.avertissement:
                 self._notes.append((entree.numero, choix.raison, volume))
+            elif choix.moteur == filesystems.BRUT and volume >= SEUIL_COPIE_BRUTE_ANNONCEE:
+                # Non reconnue (BitLocker, format inconnu…) : copiée en entier.
+                # Les petites partitions techniques, comme la réservée de
+                # Windows, restent silencieuses ; une grosse change la durée.
+                self._notes.append((entree.numero, t("{motif} : copie intégrale", motif=choix.raison), volume))
 
     def lignes(self, debit: float) -> list[Ligne]:
         if self.brut:

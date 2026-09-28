@@ -18,6 +18,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 0.9 | 2026-09-28 | Kevin + Claude | CloneGator live livré, essayé sur de vraies machines ; `fdisk` ajouté aux dépendances du paquet (§15) |
 | 1.0 | 2026-09-28 | Kevin + Claude | Interface bilingue, anglais par défaut et français ; F2 change la langue, F3 le clavier (§9.1, §9.8). Nouvelle présentation des écrans (§9.8). Le live démarre sans menu, en anglais avec un clavier US (§15) |
 | 1.1 | 2026-09-28 | Kevin + Claude | Le démarrage réseau devient un logiciel séparé, GatorPXE (§17) : CloneGator n'aura plus de mode PXE, seulement ce que GatorPXE lui demandera |
+| 1.2 | 2026-09-28 | Kevin + Claude | Une partition non reconnue de plus de 1 Go, copiée en entier, est annoncée à la confirmation (§6.2) |
 
 ---
 
@@ -218,7 +219,9 @@ pour chaque partition**. L'opérateur ne choisit pas entre « rapide » et « br
 | Chiffré (BitLocker, LUKS), inconnu, ou sans système de fichiers | copie brute | Copie intégrale de la partition |
 
 Une partition sans système de fichiers n'est pas une anomalie : la partition réservée de Windows
-n'en a jamais. Elle est copiée en brut, sans avertissement.
+n'en a jamais. Elle est copiée en brut, sans avertissement. Au-delà de 1 Go, en revanche — une
+partition BitLocker, un format inconnu —, la copie intégrale est annoncée à la confirmation
+comme pour un système sale : elle change la durée de l'opération.
 
 **Un Windows mal arrêté** est le cas sale le plus courant : Windows 10 et 11 laissent C: hiberné
 après un arrêt normal, à cause du démarrage rapide. CloneGator ne lève jamais l'hibernation, ce
