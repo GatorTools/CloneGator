@@ -113,29 +113,40 @@ def _salete(partition: Partition, fstype: str) -> str:
 
 
 def secours_ntfs(chemin: str) -> tuple[int, bytes] | None:
-    """Le secteur d'amorçage de secours d'un NTFS, et sa position en octets.
+    """Le secteur d'amorçage de secours à écrire sur la cible, et sa position en
+    octets.
 
     NTFS en garde une copie juste après la fin du volume, hors des clusters que
-    partclone transfère : il faut la recopier à part, sans quoi la cible garde
-    à cet endroit ce qu'elle contenait avant et `ntfsfix` la déclare
-    incohérente. Sa position se lit dans le secteur d'amorçage lui-même :
-    octets par secteur à 0x0B, nombre de secteurs du volume à 0x28.
+    partclone transfère : il faut l'écrire à part, sans quoi la cible garde à
+    cet endroit ce qu'elle contenait avant et `ntfsfix` la déclare incohérente.
+    Sa position se lit dans le secteur d'amorçage lui-même : octets par
+    secteur à 0x0B, nombre de secteurs du volume à 0x28.
+
+    Dans un NTFS sain, ce secours est une copie exacte du secteur d'amorçage :
+    c'est donc le secteur d'amorçage qu'on rend. Un maître au secours absent ou
+    périmé (c'est arrivé) donne ainsi quand même une cible saine, comme après
+    un `chkdsk` — et le maître, lui, n'est que lu.
     """
     fd = sysexec.ouvrir(chemin)
     try:
-        amorce = os.pread(fd, 512, 0)
+        amorce = os.pread(fd, 4096, 0)
         octets_par_secteur = int.from_bytes(amorce[0x0B:0x0D], "little")
         secteurs = int.from_bytes(amorce[0x28:0x30], "little")
-        if octets_par_secteur not in (512, 1024, 2048, 4096):
+        if amorce[3:11] != b"NTFS    " or octets_par_secteur not in (512, 1024, 2048, 4096):
+            _log.warning("%s : secteur d'amorçage NTFS illisible", chemin)
             return None
+        amorce = amorce[:octets_par_secteur]
         position = secteurs * octets_par_secteur
         secours = os.pread(fd, octets_par_secteur, position)
     finally:
         os.close(fd)
-    if len(secours) != octets_par_secteur or secours[3:11] != b"NTFS    ":
-        _log.warning("%s : secteur d'amorçage de secours introuvable", chemin)
+    if len(secours) != octets_par_secteur:
+        _log.warning("%s : pas de place pour le secteur de secours après le volume", chemin)
         return None
-    return position, secours
+    if secours != amorce:
+        _log.info("%s : secteur de secours absent ou périmé sur la source ; la cible reçoit une "
+                  "copie du secteur d'amorçage", chemin)
+    return position, amorce
 
 
 def volume_a_copier(partition: Partition, choix: Choix) -> int:

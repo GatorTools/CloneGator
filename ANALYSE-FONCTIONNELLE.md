@@ -20,6 +20,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 1.1 | 2026-09-28 | Kevin + Claude | Le démarrage réseau devient un logiciel séparé, GatorPXE (§17) : CloneGator n'aura plus de mode PXE, seulement ce que GatorPXE lui demandera |
 | 1.2 | 2026-09-28 | Kevin + Claude | Une partition non reconnue de plus de 1 Go, copiée en entier, est annoncée à la confirmation (§6.2) |
 | 1.3 | 2026-09-28 | Kevin + Claude | GatorPXE intègre CloneGator à son menu par ses fichiers de démarrage réseau ; plus de restauration dirigée, la restauration passe par CloneGator (§17) |
+| 1.4 | 2026-09-28 | Kevin + Claude | NTFS : le secours écrit sur la cible est une copie du secteur d'amorçage, pour qu'un maître au secours absent ou périmé donne des cibles saines (§6.2) |
 
 ---
 
@@ -236,7 +237,9 @@ Sont également copiés, hors partitions :
   Windows désigne ses partitions par eux
 - le code d'amorçage et l'espace précédant la première partition
 - pour GPT, l'en-tête de secours repositionné correctement en fin de disque cible
-- pour NTFS, le secteur d'amorçage de secours, que partclone ne copie pas
+- pour NTFS, le secteur d'amorçage de secours, que partclone ne copie pas ; la cible reçoit une
+  copie du secteur d'amorçage, ce qu'est ce secours dans un NTFS sain : un maître au secours
+  absent ou périmé donne quand même des cibles saines
 
 L'espace non alloué n'est pas copié.
 

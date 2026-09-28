@@ -394,7 +394,11 @@ class Clonage:
                 ecrivain.tuer()
             fin_ecrivain = self._attendre(ecrivain)
 
-            if suivi.etat == BLOQUEE:
+            if self._arret.is_set() and suivi.etat != REUSSIE:
+                # Une interruption arrête tous les programmes : ce qui en découle
+                # (tube coupé, lecture arrêtée) n'est pas un échec de la cible.
+                cible.conclure(INTERROMPUE, t("partition {numero} : copie interrompue", numero=numero))
+            elif suivi.etat == BLOQUEE:
                 cible.conclure(BLOQUEE, t("partition {numero} : {raison}", numero=numero, raison=suivi.motif))
             elif suivi.etat == INTERROMPUE:
                 cible.conclure(INTERROMPUE, t("partition {numero} : copie interrompue", numero=numero))
@@ -478,7 +482,9 @@ class Clonage:
             if diffusion.octets_lus < octets and not diffusion.motif_source:
                 diffusion.motif_source = t("source plus courte que prévu")
             for cible, suivi in zip(cibles, diffusion.cibles):
-                if suivi.etat != REUSSIE:
+                if self._arret.is_set() and suivi.etat != REUSSIE:
+                    cible.conclure(INTERROMPUE, t("interrompu pendant : {etape}", etape=quoi))
+                elif suivi.etat != REUSSIE:
                     cible.conclure(suivi.etat, f"{quoi} : {suivi.motif}")
                 elif diffusion.motif_source:
                     cible.conclure(ECHEC, f"{quoi} : {diffusion.motif_source}")
