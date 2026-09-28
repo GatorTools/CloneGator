@@ -327,6 +327,33 @@ def ecrire(chemin: str, valeur: str) -> bool:
     return True
 
 
+def sur_console_virtuelle() -> bool:
+    """Le programme tourne-t-il sur une console texte de la machine (tty1…),
+    et pas dans une session SSH ?
+
+    On ne peut pas se fier au seul terminal du programme : `sudo`, réglé avec
+    `use_pty` (le défaut d'Ubuntu 24.04), intercale un pseudo-terminal. On
+    remonte donc les processus parents : si l'un d'eux tient une console
+    virtuelle (majeur 4, mineur 1 à 63), on est sur l'écran de la machine."""
+    pid = os.getpid()
+    for _ in range(8):
+        try:
+            with open(f"/proc/{pid}/stat", encoding="utf-8") as fichier:
+                champs = fichier.read().rsplit(")", 1)[1].split()
+        except (OSError, IndexError):
+            return False
+        # Après la commande entre parenthèses : état, parent, groupe, session, terminal.
+        parent, terminal = int(champs[1]), int(champs[4])
+        majeur = (terminal >> 8) & 0xFFF
+        mineur = (terminal & 0xFF) | ((terminal >> 12) & 0xFFF00)
+        if majeur == 4 and 1 <= mineur <= 63:
+            return True
+        if parent <= 1:
+            return False
+        pid = parent
+    return False
+
+
 def tenu_par_le_systeme(chemin: str) -> bool:
     """Le noyau refuse-t-il d'ouvrir ce disque en exclusivité ?
 

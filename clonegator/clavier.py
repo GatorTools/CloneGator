@@ -47,7 +47,9 @@ def appliquer(code: str) -> bool:
     compilee = sysexec.executer(argv)
     if not compilee.ok:
         return False
-    chargee = sysexec.executer(["loadkeys", "--quiet"], entree=compilee.sortie)
+    # /dev/tty0 : la console au premier plan. Derrière `sudo`, le terminal du
+    # programme est un pseudo-terminal, où loadkeys ne trouverait pas de console.
+    chargee = sysexec.executer(["loadkeys", "--quiet", "-C", "/dev/tty0"], entree=compilee.sortie)
     if chargee.ok:
         _log.info("clavier : %s", code)
     return chargee.ok

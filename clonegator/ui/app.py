@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import threading
 import time
 
@@ -1114,11 +1113,9 @@ def demarrer() -> int:
 
 
 def _console_physique() -> bool:
-    """Tourne-t-on sur une console texte de la machine (tty1…), et pas par SSH ?"""
-    try:
-        return re.fullmatch(r"/dev/tty\d+", os.ttyname(0)) is not None
-    except OSError:
-        return False
+    """Tourne-t-on sur une console texte de la machine (tty1…), et pas par SSH ?
+    Vrai aussi derrière `sudo`, qui intercale un pseudo-terminal."""
+    return sysexec.sur_console_virtuelle()
 
 
 def _taire_le_noyau() -> str | None:
