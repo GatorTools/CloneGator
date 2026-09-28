@@ -101,6 +101,9 @@ Phase 5 terminée, MVP livré. `./outils/construire-paquet.sh` construit le
 `v<version>` (`~` → `-`, `+` → `.`), `gh release create --target <commit complet>` (l'abrégé est refusé), et joindre aussi une
 copie nommée `clonegator.deb`, et une copie de l'ISO nommée `clonegator-live.iso`, pour les adresses courtes
 `github.com/GatorTools/CloneGator/releases/latest/download/clonegator.deb`.
+Le dépôt APT (`GatorTools/apt`, copie locale `/root/GatorTools-apt`, publié à
+`gatortools.github.io/apt`) reprend les trois dernières releases d'elle-même, chaque heure ;
+pour publier tout de suite : `gh workflow run publier -R GatorTools/apt`.
 
 ## Site web
 
