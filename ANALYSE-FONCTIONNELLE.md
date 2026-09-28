@@ -19,6 +19,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 1.0 | 2026-09-28 | Kevin + Claude | Interface bilingue, anglais par défaut et français ; F2 change la langue, F3 le clavier (§9.1, §9.8). Nouvelle présentation des écrans (§9.8). Le live démarre sans menu, en anglais avec un clavier US (§15) |
 | 1.1 | 2026-09-28 | Kevin + Claude | Le démarrage réseau devient un logiciel séparé, GatorPXE (§17) : CloneGator n'aura plus de mode PXE, seulement ce que GatorPXE lui demandera |
 | 1.2 | 2026-09-28 | Kevin + Claude | Une partition non reconnue de plus de 1 Go, copiée en entier, est annoncée à la confirmation (§6.2) |
+| 1.3 | 2026-09-28 | Kevin + Claude | GatorPXE intègre CloneGator à son menu par ses fichiers de démarrage réseau ; plus de restauration dirigée, la restauration passe par CloneGator (§17) |
 
 ---
 
@@ -739,15 +740,15 @@ ou `dialog`, qui raisonnent en boîtes de dialogue successives.
 
 ## 17. GatorPXE
 
-Le démarrage par le réseau n'est plus un mode de CloneGator : c'est un logiciel à part,
+Le démarrage par le réseau n'est pas un mode de CloneGator : c'est un logiciel à part,
 **GatorPXE**, installé sur un serveur Debian ou Ubuntu. Sa description vit dans son dépôt,
-[GatorTools/GatorPXE](https://github.com/GatorTools/GatorPXE). Il distribue par le réseau des
-images démarrables, des renvois vers d'autres serveurs, et des sauvegardes CloneGator à
-restaurer.
+[GatorTools/GatorPXE](https://github.com/GatorTools/GatorPXE). Son menu propose des images
+démarrables, des renvois vers d'autres serveurs, et CloneGator lui-même, que l'on peut en retirer.
 
-Ce que GatorPXE demandera à CloneGator :
+CloneGator y démarre par les fichiers de démarrage réseau de son live (noyau, initrd, système
+compressé), que la construction produit déjà (§15) ; il faudra les joindre aux releases. Pour le
+reste, rien ne change : une restauration passe par l'écran Restaurer habituel, depuis le partage
+réseau où sont les sauvegardes.
 
-- joindre aux releases les fichiers du démarrage réseau du live (noyau, initrd, système
-  compressé), que la construction produit déjà (§15) ;
-- un mode de restauration dirigée : le live, démarré par le réseau, ouvre directement la
-  sauvegarde choisie dans le menu de GatorPXE et ne demande que le disque cible.
+Plus tard, en option : lire sur la ligne de commande du noyau l'adresse d'un partage de
+sauvegardes transmise par GatorPXE, pour la pré-remplir ; seul le mot de passe resterait à taper.
