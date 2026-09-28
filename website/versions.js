@@ -58,12 +58,13 @@
     return html;
   }
 
-  // Les fichiers versionnés, pas les copies « clonegator.deb » et
-  // « clonegator-live.iso » qui servent aux adresses courtes.
-  var COPIES = ["clonegator.deb", "clonegator-live.iso"];
+  // Les fichiers versionnés, pas les copies « clonegator.deb »,
+  // « clonegator-live.iso » et « clonegator-live-pxe.tar » qui servent aux
+  // adresses courtes.
+  var COPIES = ["clonegator.deb", "clonegator-live.iso", "clonegator-live-pxe.tar"];
   function fichiers(release) {
     return (release.assets || []).filter(function (a) {
-      return /\.(deb|iso)$/.test(a.name) && COPIES.indexOf(a.name) < 0;
+      return /\.(deb|iso|tar)$/.test(a.name) && COPIES.indexOf(a.name) < 0;
     }).sort(function (a, b) { return a.name < b.name ? -1 : 1; });
   }
 

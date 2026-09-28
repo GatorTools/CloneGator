@@ -100,7 +100,9 @@ réglages : `/etc/clonegator/clonegator.json`. Un seul CloneGator à la fois
 Phase 5 terminée, MVP livré. `./outils/construire-paquet.sh` construit le
 `.deb` dans `dist/` (dépôt commité exigé). Publier : étiquette
 `v<version>` (`~` → `-`, `+` → `.`), `gh release create --target <commit complet>` (l'abrégé est refusé), et joindre aussi une
-copie nommée `clonegator.deb`, et une copie de l'ISO nommée `clonegator-live.iso`, pour les adresses courtes
+copie nommée `clonegator.deb`, une copie de l'ISO nommée `clonegator-live.iso`, et l'archive du
+démarrage réseau (`clonegator-live-pxe_<version>.tar`) avec sa copie `clonegator-live-pxe.tar`
+— GatorPXE la prend là —, pour les adresses courtes
 `github.com/GatorTools/CloneGator/releases/latest/download/clonegator.deb`.
 Le dépôt APT (`GatorTools/apt`, copie locale `/root/GatorTools-apt`, publié à
 `gatortools.github.io/apt`) reprend les trois dernières releases d'elle-même, chaque heure ;
@@ -117,8 +119,9 @@ recopiés de l'interface réelle) et simples à lire pour un technicien.
 
 ## Le live
 
-`./outils/construire-live.sh` (root) construit `dist/clonegator-live_<version>.iso` et les
-fichiers du démarrage réseau à partir du `.deb` du commit courant. Ce qu'on ajoute au système
+`./outils/construire-live.sh` (root) construit `dist/clonegator-live_<version>.iso` et
+l'archive du démarrage réseau `dist/clonegator-live-pxe_<version>.tar` à partir du `.deb` du
+commit courant. Ce qu'on ajoute au système
 live vit dans `live/systeme/`, le menu de démarrage dans `live/grub.cfg`. La station A n'a pas
 de virtualisation matérielle : QEMU tourne en émulation (`-accel tcg`), une minute pour
 démarrer ; écran par `screendump` du moniteur, touches par `sendkey`.

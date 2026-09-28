@@ -22,6 +22,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 1.3 | 2026-09-28 | Kevin + Claude | GatorPXE intègre CloneGator à son menu par ses fichiers de démarrage réseau ; plus de restauration dirigée, la restauration passe par CloneGator (§17) |
 | 1.4 | 2026-09-28 | Kevin + Claude | NTFS : le secours écrit sur la cible est une copie du secteur d'amorçage, pour qu'un maître au secours absent ou périmé donne des cibles saines (§6.2) |
 | 1.5 | 2026-09-28 | Kevin + Claude | Analyser un disque : un rapport à l'écran, en lecture seule, de ce que contient un disque et de son état (§18) |
+| 1.6 | 2026-09-28 | Kevin + Claude | Le démarrage réseau du live, publié avec chaque release (`clonegator-live-pxe.tar`), shim signé compris pour Secure Boot (§15, §17) |
 
 ---
 
@@ -688,14 +689,18 @@ installé sur un disque USB.
 ### CloneGator live
 
 Une ISO démarrable construite à partir du même paquet. Elle porte CloneGator sur n'importe quel
-PC, sans rien installer, et fournit au mode PXE (§17) les fichiers qu'il distribuera.
+PC, sans rien installer. Le même live se démarre aussi par le réseau.
 
 - **Base : Debian 13**, la version stable. Son système live charge le système par HTTP depuis
   le réseau, ce que le PXE exigera ; son noyau et son chargeur signés démarrent avec Secure Boot
   actif. Le paquet `.deb` s'y installe sans modification.
 - **Une ISO hybride**, BIOS et UEFI, qu'on écrit sur une clé avec l'outil habituel (Rufus,
-  Balena Etcher, `dd`) ou qu'on grave. La même construction produit le noyau, l'initrd et le
-  système compressé qui servent au démarrage réseau.
+  Balena Etcher, `dd`) ou qu'on grave.
+- **Le démarrage réseau** : chaque release porte aussi `clonegator-live-pxe.tar`, les fichiers
+  qu'un serveur PXE sert pour démarrer le live sans ISO — le shim signé de Debian, le noyau,
+  l'initrd et le système compressé. Le noyau reçoit `boot=live fetch=<adresse HTTP du système
+  compressé>` ; en UEFI avec Secure Boot, il passe par ce shim (commande `shim` d'iPXE), faute de
+  quoi le micrologiciel le refuse.
 - **Au démarrage**, pas de menu visible : la machine s'ouvre directement sur l'accueil de
   CloneGator en mode libre, en anglais avec un clavier US, sans connexion ni mot de passe. Échap,
   pendant les deux premières secondes, montre le menu de démarrage, pour le dépannage. Langue et
@@ -750,9 +755,8 @@ Le démarrage par le réseau n'est pas un mode de CloneGator : c'est un logiciel
 [GatorTools/GatorPXE](https://github.com/GatorTools/GatorPXE). Son menu propose des images
 démarrables, des renvois vers d'autres serveurs, et CloneGator lui-même, que l'on peut en retirer.
 
-CloneGator y démarre par les fichiers de démarrage réseau de son live (noyau, initrd, système
-compressé), que la construction produit déjà (§15) ; il faudra les joindre aux releases. Pour le
-reste, rien ne change : une restauration passe par l'écran Restaurer habituel, depuis le partage
+CloneGator y démarre par les fichiers de démarrage réseau de son live (§15), publiés avec chaque
+release comme pour n'importe quel serveur PXE. Pour le reste, rien ne change : une restauration passe par l'écran Restaurer habituel, depuis le partage
 réseau où sont les sauvegardes.
 
 Plus tard, en option : lire sur la ligne de commande du noyau l'adresse d'un partage de

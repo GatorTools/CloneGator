@@ -52,6 +52,16 @@ sudo dd if=clonegator-live.iso of=/dev/sdX bs=4M conv=fsync status=progress</cod
     Canadien multilingue ou Anglais (États-Unis). Rien n'est conservé d'un démarrage à l'autre :
     les sauvegardes vont sur un disque USB ou un partage réseau.</p>
 
+    <h3>Démarrage réseau</h3>
+    <p>Pour démarrer la clé live depuis un serveur PXE, sans clé :
+    <a href="https://github.com/GatorTools/CloneGator/releases/latest/download/clonegator-live-pxe.tar">clonegator-live-pxe.tar</a>
+    porte le noyau, l'initrd, le système compressé et le shim signé pour Secure Boot. Exemple
+    avec iPXE :</p>
+<pre><code>shim http://serveur/shimx64.efi      # en UEFI seulement
+kernel http://serveur/vmlinuz initrd=initrd.img boot=live fetch=http://serveur/filesystem.squashfs
+initrd http://serveur/initrd.img
+boot</code></pre>
+
     <h3>Paquet Ubuntu</h3>
     <p>Pour une station de clonage, ou un poste qu'on garde. Testé sur Ubuntu 24.04 :</p>
 <pre><code>wget github.com/GatorTools/CloneGator/releases/latest/download/clonegator.deb

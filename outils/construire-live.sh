@@ -8,8 +8,9 @@
 # CloneGator et les fichiers de live/systeme/. On en tire :
 #   - dist/clonegator-live_<version>.iso : ISO hybride, BIOS et UEFI (Secure
 #     Boot par le shim et le GRUB signés de Debian), pour une clé ou un CD ;
-#   - dist/clonegator-live_<version>/ : noyau, initrd et système compressé,
-#     les fichiers du démarrage réseau (§17).
+#   - dist/clonegator-live-pxe_<version>.tar : les fichiers du démarrage
+#     réseau (§15) — shim signé, noyau, initrd et système compressé —, aussi
+#     laissés dans dist/clonegator-live_<version>/.
 #
 # Il faut root, le réseau (dépôts Debian) et, sur la machine de construction :
 # mmdebstrap debian-archive-keyring squashfs-tools xorriso grub-pc-bin mtools
@@ -136,5 +137,9 @@ xorriso -as mkisofs -iso-level 3 -full-iso9660-filenames -joliet -joliet-long -r
 rm -rf "dist/$nom"
 mkdir -p "dist/$nom"
 cp "$iso/live/vmlinuz" "$iso/live/initrd.img" "$iso/live/filesystem.squashfs" "dist/$nom/"
+cp "$shim" "dist/$nom/shimx64.efi"
+# Sans compression : le système l'est déjà.
+tar -C "dist/$nom" -cf "dist/${nom/clonegator-live/clonegator-live-pxe}.tar" \
+    shimx64.efi vmlinuz initrd.img filesystem.squashfs
 
 echo "dist/$nom.iso ($(du -h "dist/$nom.iso" | cut -f1))"
