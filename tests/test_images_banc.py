@@ -19,6 +19,10 @@ import unittest
 
 from clonegator import devices, image, journal, layout, sysexec
 from clonegator.engine import backup, clone
+
+from clonegator import langue
+
+langue.choisir(langue.FRANCAIS)  # les motifs attendus sont écrits en français
 from clonegator.engine.sources import SourceImage
 
 from tests.test_clone_banc import BOUCLES, MANIFESTE

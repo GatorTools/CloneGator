@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import unittest
 
+from clonegator import langue
 from clonegator.ui.model import RETOUR, VALIDER, Champ, Element, Formulaire, Liste
+
+langue.choisir(langue.FRANCAIS)  # les messages attendus sont écrits en français
 
 
 def liste_disques(multiple=False):
@@ -67,7 +70,7 @@ class ChoixMultiple(unittest.TestCase):
     def test_on_valide_sur_la_ligne_valider(self):
         liste = liste_disques(multiple=True)
         liste.touche("espace")
-        liste.touche("haut")  # depuis le premier disque, on remonte sur « Valider »
+        liste.touche("haut")  # depuis le premier disque, on remonte sur « Continuer »
         self.assertTrue(liste.sur_valider)
         self.assertEqual(liste.touche("entree"), VALIDER)
         self.assertEqual(liste.choix, ["sata1"])
@@ -86,9 +89,35 @@ class ChoixMultiple(unittest.TestCase):
         self.assertFalse(liste.elements[1].actif)  # P2 ne se force pas
 
 
+class Reconstruction(unittest.TestCase):
+    """Après F2, l'écran est reconstruit : rien de ce que l'opérateur a fait ne se perd."""
+
+    def test_une_liste_garde_curseur_coches_et_forcage(self):
+        ancienne = liste_disques(multiple=True)
+        ancienne.touche("espace")
+        ancienne.touche("f")
+        ancienne.touche("bas")
+        nouvelle = liste_disques(multiple=True)
+        nouvelle.reprendre(ancienne)
+        self.assertEqual(nouvelle.choix, ["sata1"])
+        self.assertEqual(nouvelle.curseur, ancienne.curseur)
+        self.assertTrue(nouvelle.elements[3].actif)
+
+    def test_un_formulaire_garde_le_texte_saisi(self):
+        ancien = Formulaire("", [Champ("hote", "Hôte"), Champ("partage", "Partage")])
+        for caractere in "nas":
+            ancien.touche(caractere)
+        ancien.touche("entree")
+        nouveau = Formulaire("", [Champ("hote", "Host"), Champ("partage", "Share")])
+        nouveau.reprendre(ancien)
+        self.assertEqual(nouveau.valeurs, {"hote": "nas", "partage": ""})
+        self.assertEqual(nouveau.curseur, 1)
+
+
 class Formulaires(unittest.TestCase):
     def test_saisie_effacement_et_validation(self):
-        formulaire = Formulaire("", [Champ("Hôte", "10.0.0."), Champ("Mot de passe", masque=True)])
+        formulaire = Formulaire("", [Champ("hote", "Hôte", "10.0.0."),
+                                     Champ("mot_de_passe", "Mot de passe", masque=True)])
         formulaire.touche("1")
         formulaire.touche("2")
         formulaire.touche("effacer")
@@ -96,10 +125,10 @@ class Formulaires(unittest.TestCase):
         for caractere in "secret":
             formulaire.touche(caractere)
         self.assertEqual(formulaire.touche("entree"), VALIDER)
-        self.assertEqual(formulaire.valeurs, {"Hôte": "10.0.0.1", "Mot de passe": "secret"})
+        self.assertEqual(formulaire.valeurs, {"hote": "10.0.0.1", "mot_de_passe": "secret"})
 
     def test_le_mot_de_passe_ne_s_affiche_jamais(self):
-        formulaire = Formulaire("", [Champ("Mot de passe", "secret", masque=True)])
+        formulaire = Formulaire("", [Champ("mot_de_passe", "Mot de passe", "secret", masque=True)])
         self.assertNotIn("secret", formulaire.lignes()[0].texte())
 
 

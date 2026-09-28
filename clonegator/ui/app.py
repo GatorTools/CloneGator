@@ -6,6 +6,10 @@ confirmer — « Annuler » par défaut —, suivre la progression, lire le rapp
 Échap revient à l'étape précédente. Les disques qu'on ne peut pas choisir restent
 visibles, grisés, avec leur motif ; ce qu'un disque peut devenir se décide dans
 `devices`, jamais ici.
+
+Chaque écran est décrit par une fonction qui le construit, dans la langue du
+moment : `ecran` la rappelle après F2, et l'écran change de langue sans perdre
+ce que l'opérateur y avait fait (§9.8).
 """
 
 from __future__ import annotations
@@ -16,13 +20,14 @@ import re
 import threading
 import time
 
-from .. import VERSION, config, demarrage, devices, filesystems, health, image, journal, layout, storage, sysexec
-from .. import texte
+from .. import clavier, config, demarrage, devices, filesystems, health, image, journal, langue, layout
+from .. import storage, sysexec, texte
 from ..engine import backup, clone, fanout, sources
 from ..journal import Journal
+from ..langue import t
 from .model import (
-    AIDE, AVERTISSEMENT, ECHEC, FORT, GRISE, NORMAL, OK,
-    Champ, Element, Formulaire, Ligne, Liste, Page,
+    AVERTISSEMENT, DETAIL, ECHEC, FORT, GRISE, NORMAL, OK,
+    Champ, Element, Formulaire, Ligne, Liste, Page, barre,
 )
 
 _log = logging.getLogger("clonegator.ui")
@@ -32,11 +37,56 @@ _log = logging.getLogger("clonegator.ui")
 DEBIT_LECTURE = 150e6
 DEBIT_SAUVEGARDE = {False: 100e6, True: 55e6}  # disque USB, partage réseau
 
-AIDE_LISTE = "↑↓ ou numéro : choisir    Entrée : valider    Échap : retour"
-AIDE_COCHER = ("↑↓ : se déplacer    Entrée, Espace ou numéro : cocher    "
-               "« Valider », en bas, pour terminer    Échap : retour")
-AIDE_FORMULAIRE = "Tapez le texte    Entrée : champ suivant, puis valider    Échap : retour"
-AIDE_LIRE = "↑↓ : faire défiler    Entrée : revenir"
+# Largeur de la colonne des libellés dans les écrans de confirmation et de rapport.
+COLONNE = 14
+
+
+# ----------------------------------------------------------- barres du bas ---
+# Construites à la demande : elles suivent la langue.
+
+def _touches_liste():
+    return [("↑↓", t("Choisir")), (t("Entrée"), t("Valider")), (t("Échap"), t("Retour"))]
+
+
+def _touches_cocher():
+    return [("↑↓", t("Se déplacer")), (t("Espace"), t("Cocher")), (t("Entrée"), t("Cocher ou continuer")),
+            (t("Échap"), t("Retour"))]
+
+
+def _touches_formulaire():
+    return [(t("Entrée"), t("Champ suivant, puis valider")), (t("Échap"), t("Retour"))]
+
+
+def _touches_lire():
+    return [("↑↓", t("Faire défiler")), (t("Entrée"), t("Revenir"))]
+
+
+def _touches_confirmer(copie_integrale: bool = False):
+    touches = [("↑↓", t("Choisir")), (t("Entrée"), t("Valider"))]
+    if copie_integrale:
+        touches.append(("I", t("Copie intégrale")))
+    return touches + [(t("Échap"), t("Annuler"))]
+
+
+# ------------------------------------------------------- fils des étapes ---
+
+def _etapes_cloner():
+    return t("Cloner"), [t("Source"), t("Cibles"), t("Confirmation")]
+
+
+def _etapes_sauvegarder():
+    return t("Sauvegarder"), [t("Disque"), t("Emplacement"), t("Nom"), t("Confirmation")]
+
+
+def _etapes_restaurer():
+    return t("Restaurer"), [t("Emplacement"), t("Sauvegarde"), t("Cibles"), t("Confirmation")]
+
+
+def _etapes_station():
+    etapes = [t("Source"), t("Cibles")]
+    if not demarrage.en_live():
+        etapes.append(t("Démarrage"))
+    return t("Mode station"), etapes
 
 
 class ArretDemande(Exception):
@@ -49,10 +99,36 @@ class Application:
         self.ecran = ecran
         self.reglages = config.lire()
         self.arret_demande = False
+        langue.choisir(self.reglages.langue)
+        ecran.changer_langue = self.changer_langue
+        ecran.changer_clavier = self.changer_clavier
+        ecran.clavier_actuel = self.reglages.clavier
+
+    # ----------------------------------------------------- langue et clavier ---
+
+    def changer_langue(self, code: str) -> None:
+        langue.choisir(code)
+        self.reglages.langue = code
+        self._memoriser()
+
+    def changer_clavier(self, code: str) -> None:
+        if clavier.appliquer(code):
+            self.reglages.clavier = code
+            self.ecran.clavier_actuel = code
+            self._memoriser()
+
+    def _memoriser(self) -> None:
+        try:
+            config.ecrire(self.reglages)
+        except OSError as erreur:
+            _log.warning("réglages non enregistrés : %s", erreur)
 
     # -------------------------------------------------------------- accueil ---
 
     def lancer(self) -> None:
+        if self.ecran.console_physique:
+            # Le clavier mémorisé, ou l'anglais (États-Unis) par défaut (§9.8).
+            clavier.appliquer(self.reglages.clavier)
         try:
             if self.reglages.mode == config.MODE_STATION and self.reglages.station:
                 if not self.station():
@@ -62,16 +138,20 @@ class Application:
             pass  # une opération éventuelle a déjà été interrompue et rapportée
 
     def accueil(self) -> None:
-        while True:
+        def construire():
             liste = Liste("", [
-                Element("Sauvegarder", "sauvegarder", detail="un disque vers une sauvegarde"),
-                Element("Restaurer", "restaurer", detail="une sauvegarde vers un ou plusieurs disques"),
-                Element("Cloner", "cloner", detail="un disque vers un ou plusieurs disques"),
-                Element("Mode station", "station", detail="le même réglage à chaque fois, pour une machine à baies"),
-                Element("Journaux", "journaux", detail="les dernières opérations"),
-                Element("Quitter", "quitter"),
+                Element(t("Sauvegarder"), "sauvegarder", detail=t("Enregistrer un disque dans une sauvegarde")),
+                Element(t("Restaurer"), "restaurer", detail=t("Écrire une sauvegarde sur un ou plusieurs disques")),
+                Element(t("Cloner"), "cloner", detail=t("Copier un disque vers un ou plusieurs disques")),
+                Element(t("Mode station"), "station",
+                        detail=t("Le même réglage à chaque fois, pour une machine à baies")),
+                Element(t("Journaux"), "journaux", detail=t("Les dernières opérations")),
+                Element(t("Quitter"), "quitter"),
             ])
-            choix = self.ecran.choisir(self._page("Accueil", aide=AIDE_LISTE), liste)
+            return self._page(t("Que voulez-vous faire ?"), touches=_touches_liste()), liste
+
+        while True:
+            choix = self.ecran.choisir(construire)
             if choix == "quitter":
                 if not demarrage.en_live() or self.quitter_live():
                     return
@@ -91,13 +171,17 @@ class Application:
     def quitter_live(self) -> bool:
         """En live, quitter CloneGator laisserait un écran vide : on éteint, on
         redémarre, ou on ouvre une console. Rend False pour revenir à l'accueil."""
-        liste = Liste("", [
-            Element("Éteindre", "eteindre"),
-            Element("Redémarrer", "redemarrer"),
-            Element("Ouvrir une console", "console", detail="un shell root, pour dépanner ; « clonegator » pour revenir"),
-            Element("Revenir à l'accueil", None),
-        ])
-        choix = self.ecran.choisir(self._page("Quitter", aide=AIDE_LISTE), liste)
+        def construire():
+            liste = Liste("", [
+                Element(t("Éteindre"), "eteindre"),
+                Element(t("Redémarrer"), "redemarrer"),
+                Element(t("Ouvrir une console"), "console",
+                        detail=t("Un shell root, pour dépanner ; « clonegator » pour revenir")),
+                Element(t("Revenir à l'accueil"), None),
+            ])
+            return self._page(t("Quitter CloneGator ?"), touches=_touches_liste()), liste
+
+        choix = self.ecran.choisir(construire)
         if choix in ("eteindre", "redemarrer"):
             sysexec.executer(["systemctl", "--no-block", "poweroff" if choix == "eteindre" else "reboot"])
         return choix is not None
@@ -111,13 +195,12 @@ class Application:
         etape = 2 if impose else 0
         while True:
             if etape == 0:
-                source = self._choisir_source("Cloner — quel disque copier ?")
+                source = self._choisir_source(_etapes_cloner, t("Quel disque voulez-vous copier ?"))
                 if source is None:
                     return
                 etape = 1
             elif etape == 1:
-                cibles = self._choisir_cibles("Cloner — vers quels disques ?", source=source,
-                                              precedentes=cibles)
+                cibles = self._choisir_cibles(_etapes_cloner, 1, source=source, precedentes=cibles)
                 etape = 2 if cibles else 0
             else:
                 plan = _plan_disque(source)
@@ -143,14 +226,15 @@ class Application:
         try:
             while True:
                 if etape == 0:
-                    source = self._choisir_source("Sauvegarder — quel disque ?")
+                    source = self._choisir_source(_etapes_sauvegarder, t("Quel disque voulez-vous sauvegarder ?"))
                     if source is None:
                         return
                     etape = 1
                 elif etape == 1:
                     if stockage is not None:
                         storage.fermer(stockage)
-                    stockage = self._choisir_stockage("Sauvegarder — où ranger la sauvegarde ?")
+                    stockage = self._choisir_stockage(_etapes_sauvegarder, 1,
+                                                      t("Où voulez-vous ranger la sauvegarde ?"))
                     if stockage is None:
                         if impose:
                             return
@@ -179,7 +263,7 @@ class Application:
         """§9.3 : où sont les sauvegardes → la sauvegarde → cibles → confirmation → …"""
         stockage = None
         try:
-            stockage = self._choisir_stockage("Restaurer — où sont les sauvegardes ?")
+            stockage = self._choisir_stockage(_etapes_restaurer, 0, t("Où sont les sauvegardes ?"))
             if stockage is None:
                 return
             while True:
@@ -190,7 +274,7 @@ class Application:
                     cibles = self._cibles_station_pour(img.taille_requise, int(img.meta.get("secteur", 512)),
                                                        cibles_imposees)
                 else:
-                    cibles = self._choisir_cibles("Restaurer — vers quels disques ?", image=img)
+                    cibles = self._choisir_cibles(_etapes_restaurer, 2, image=img)
                 if not cibles:
                     continue
                 if self._confirmer_restauration(img, stockage, cibles) != "lancer":
@@ -216,30 +300,40 @@ class Application:
 
         def element(e: devices.Emplacement) -> Element:
             disque = presents.get(e.cle)
-            detail = (f"{disque.nom_noyau:<8} {disque.description}  {texte.taille(disque.taille)}"
-                      if disque else "(vide)")
+            detail = (f"{disque.nom_noyau:<8} {disque.description[:22]:<22} {texte.taille(disque.taille):>9}"
+                      if disque else t("(vide)"))
             return Element(e.nom, e.cle, detail=detail)
+
+        def page(etape: int, titre: str, touches):
+            operation, etapes = _etapes_station()
+            return self._page(titre, touches=touches, operation=operation, etapes=etapes, etape=etape)
 
         etape = 0
         source = precedent.source if precedent else None
         cibles = list(precedent.cibles) if precedent else []
         while True:
             if etape == 0:
-                liste = Liste("", [element(e) for e in emplacements],
-                              explication="Sélectionnez l'emplacement source.")
-                if source:
-                    liste.placer(source)
-                choix = self.ecran.choisir(self._page("Mode station — la source", aide=AIDE_LISTE), liste)
+                def construire():
+                    liste = Liste("", [element(e) for e in emplacements])
+                    if source:
+                        liste.placer(source)
+                    return page(0, t("Sélectionnez l'emplacement source."), _touches_liste()), liste
+                choix = self.ecran.choisir(construire)
                 if choix is None:
                     return False
                 source = choix
                 etape = 1
             elif etape == 1:
                 autres = [e for e in emplacements if e.cle != source]
-                liste = Liste("", [element(e) for e in autres], multiple=True,
-                              explication="Sélectionnez les emplacements cibles. Leur contenu sera effacé à chaque clonage.")
-                liste.cocher(cibles or [e.cle for e in autres])
-                choix = self.ecran.choisir(self._page("Mode station — les cibles", aide=AIDE_COCHER), liste)
+
+                def construire():
+                    liste = Liste("", [element(e) for e in autres], multiple=True,
+                                  valider=t("Continuer avec {n} emplacement(s)"))
+                    liste.cocher(cibles or [e.cle for e in autres])
+                    p = page(1, t("Sélectionnez les emplacements cibles."), _touches_cocher())
+                    p.entete = [Ligne.de(t("Leur contenu sera effacé à chaque clonage."), ECHEC)]
+                    return p, liste
+                choix = self.ecran.choisir(construire)
                 if choix is None:
                     etape = 0
                     continue
@@ -249,27 +343,29 @@ class Application:
                     # Le live démarre déjà sur CloneGator, et n'enregistre rien.
                     self.reglages.station = config.ReglageStation(source, cibles, False)
                     self.reglages.mode = config.MODE_STATION
-                    config.ecrire(self.reglages)
+                    self._memoriser()
                     return True
             else:
-                liste = Liste("", [
-                    Element("Oui", True, detail="la machine démarre directement sur le mode station"),
-                    Element("Non", False, detail="on lance CloneGator soi-même"),
-                ], explication="Voulez-vous que CloneGator démarre automatiquement en mode station "
-                               "au démarrage de cet ordinateur ?")
-                liste.placer(bool(precedent and precedent.lancement_auto))
-                choix = self.ecran.choisir(
-                    self._page("Mode station — lancement automatique", aide=AIDE_LISTE), liste)
+                def construire():
+                    liste = Liste("", [
+                        Element(t("Oui"), True, detail=t("La machine démarre directement sur le mode station")),
+                        Element(t("Non"), False, detail=t("On lance CloneGator soi-même")),
+                    ])
+                    liste.placer(bool(precedent and precedent.lancement_auto))
+                    return page(2, t("Voulez-vous que CloneGator démarre automatiquement en mode station "
+                                     "au démarrage de cet ordinateur ?"), _touches_liste()), liste
+                choix = self.ecran.choisir(construire)
                 if choix is None:
                     etape = 1
                     continue
                 self.reglages.station = config.ReglageStation(source, cibles, bool(choix))
                 self.reglages.mode = config.MODE_STATION
-                config.ecrire(self.reglages)
+                self._memoriser()
                 motif = demarrage.activer() if choix else demarrage.desactiver()
                 if motif:
-                    self._message("Lancement automatique", [
-                        Ligne.de("Le mode station est activé, mais pas son lancement automatique :", AVERTISSEMENT),
+                    self._message(t("Lancement automatique"), [
+                        Ligne.de(t("Le mode station est activé, mais pas son lancement automatique :"),
+                                 AVERTISSEMENT),
                         Ligne.de(motif)])
                 return True
 
@@ -277,86 +373,91 @@ class Application:
         """L'accueil du mode station (§9.4). Rend False pour quitter CloneGator,
         True pour revenir à l'accueil du mode libre."""
         while True:
-            page, liste = self._accueil_station()
-            choix = self.ecran.choisir(page, liste, rafraichir=lambda l: self._accueil_station(l))
+            choix = self.ecran.choisir(self._accueil_station, intervalle=2.0)
             reglage = self.reglages.station
             if choix is None:
                 continue
             source, cibles = _disques_station(reglage)
             if choix == "cloner":
                 if source is None:
-                    self._message("Cloner", [Ligne.de("Aucun disque dans l'emplacement source.", AVERTISSEMENT)])
+                    self._message(t("Cloner"), [Ligne.de(t("Aucun disque dans l'emplacement source."),
+                                                         AVERTISSEMENT)])
                     continue
                 cibles_ok = self._cibles_station_pour(_taille_requise(source), source.secteur_logique, cibles,
                                                       source=source)
                 if not cibles_ok:
-                    self._message("Cloner", [Ligne.de("Aucune cible prête.", AVERTISSEMENT)])
+                    self._message(t("Cloner"), [Ligne.de(t("Aucune cible prête."), AVERTISSEMENT)])
                     continue
                 self.cloner(source, cibles_ok)
             elif choix == "restaurer":
                 self.restaurer(cibles_imposees=cibles)
             elif choix == "sauvegarder":
                 if source is None:
-                    self._message("Sauvegarder", [Ligne.de("Aucun disque dans l'emplacement source.", AVERTISSEMENT)])
+                    self._message(t("Sauvegarder"), [Ligne.de(t("Aucun disque dans l'emplacement source."),
+                                                              AVERTISSEMENT)])
                     continue
                 self.sauvegarder(source)
             elif choix == "quitter":
                 self.reglages.mode = config.MODE_LIBRE
-                config.ecrire(self.reglages)
+                self._memoriser()
                 motif = demarrage.desactiver()
                 if motif:
-                    self._message("Lancement automatique", [Ligne.de(motif, AVERTISSEMENT)])
+                    self._message(t("Lancement automatique"), [Ligne.de(motif, AVERTISSEMENT)])
                 return True
 
-    def _accueil_station(self, precedente: Liste | None = None):
+    def _accueil_station(self):
+        """Le tableau des baies : chaque emplacement du réglage, son disque et
+        son état, puis les opérations."""
         reglage = self.reglages.station
         source, cibles = _disques_station(reglage)
         noms = {e.cle: e.nom for e in _emplacements_internes()}
         requis = _taille_requise(source) if source else None
 
-        lignes = []
         def rangee(nom_emplacement, role, disque, etat, style):
             if disque is None:
-                return Ligne([(f"  {nom_emplacement:<13} {role:<11} (vide)", GRISE)])
+                return Ligne([(f"{nom_emplacement:<7} {'':<8} ", NORMAL), (f"{role:<12}", FORT),
+                              (t("(vide)"), GRISE)])
             return Ligne([
-                (f"  {disque.libelle:<13} {role:<11} {disque.description[:20]:<20} "
-                 f"{texte.taille(disque.taille):>9}   ", NORMAL),
+                (f"{nom_emplacement:<7} {disque.nom_noyau:<8} ", NORMAL), (f"{role:<12}", FORT),
+                (f"{disque.description[:20]:<20} {texte.taille(disque.taille):>9}   ", NORMAL),
                 (etat, style)])
 
+        lignes = []
+        nom_source = noms.get(reglage.source, "?")
         if source is not None:
             refus = devices.refus_comme_source(source)
-            lignes.append(rangee(noms.get(reglage.source, "?"), "SOURCE", source,
-                                 refus or texte.contenu(source), AVERTISSEMENT if refus else NORMAL))
+            lignes.append(rangee(nom_source, t("SOURCE"), source,
+                                 refus or texte.contenu(source), AVERTISSEMENT if refus else DETAIL))
         else:
-            lignes.append(rangee(noms.get(reglage.source, "?"), "SOURCE", None, "", NORMAL))
+            lignes.append(rangee(nom_source, t("SOURCE"), None, "", NORMAL))
         for cle, disque in cibles:
-            etat, style = "prêt", OK
+            etat, style = t("prêt"), OK
             if disque is not None:
                 refus = devices.refus_comme_cible(disque)
                 sante = health.etat(disque)
                 if refus:
                     etat, style = refus, AVERTISSEMENT
                 elif requis is not None and disque.taille < requis:
-                    etat, style = f"trop petit ({texte.taille(requis)} requis)", AVERTISSEMENT
+                    etat, style = t("trop petit ({requis} requis)", requis=texte.taille(requis)), AVERTISSEMENT
                 elif sante.niveau == health.USURE:
-                    etat, style = f"prêt, {sante}", AVERTISSEMENT
-            lignes.append(rangee(noms.get(cle, "?"), "CIBLE", disque, etat, style))
+                    etat, style = t("prêt, {sante}", sante=health.resume(sante)), AVERTISSEMENT
+            lignes.append(rangee(noms.get(cle, "?"), t("CIBLE"), disque, etat, style))
 
         for candidat in storage.candidats():
-            libre = f"{texte.taille(candidat.libre)} libres" if candidat.libre is not None else "à monter"
-            lignes.append(Ligne([(f"  {candidat.disque.libelle:<13} {'SAUVEGARDES':<11} "
-                                  f"{candidat.disque.description[:20]:<20} {'':>9}   {libre}", AIDE)]))
+            libre = (t("{taille} libres", taille=texte.taille(candidat.libre)) if candidat.libre is not None
+                     else t("sera monté"))
+            lignes.append(Ligne([
+                (f"{candidat.disque.emplacement.nom if candidat.disque.emplacement else '':<7} "
+                 f"{candidat.disque.nom_noyau:<8} ", DETAIL), (f"{t('SAUVEGARDES'):<12}", DETAIL),
+                (f"{candidat.disque.description[:20]:<20} {'':>9}   {libre}", DETAIL)]))
 
         liste = Liste("", [
-            Element("Cloner la source vers les cibles", "cloner"),
-            Element("Restaurer une sauvegarde vers les cibles", "restaurer"),
-            Element("Sauvegarder la source", "sauvegarder"),
-            Element("Quitter le mode station", "quitter"),
+            Element(t("Cloner la source vers les cibles"), "cloner"),
+            Element(t("Restaurer une sauvegarde vers les cibles"), "restaurer"),
+            Element(t("Sauvegarder la source"), "sauvegarder"),
+            Element(t("Quitter le mode station"), "quitter"),
         ])
-        if precedente is not None:
-            liste.curseur = precedente.curseur
-        page = Page("Mode station", lignes,
-                    "↑↓ ou numéro : choisir    Entrée : valider")
+        page = self._page(t("Changez les disques, puis choisissez une opération."), lignes, _touches_liste())
         return page, liste
 
     def _cibles_station_pour(self, requis: int, secteur: int, cibles, source=None) -> list[devices.Disque]:
@@ -379,85 +480,113 @@ class Application:
         while True:
             entrees = journal.lister()
             if not entrees:
-                self._message("Journaux", [Ligne.de("Aucune opération enregistrée.")])
+                self._message(t("Journaux"), [Ligne.de(t("Aucune opération enregistrée."))])
                 return
-            liste = Liste("", [
-                Element(f"{e.date}  {e.operation:<14}", e, detail=_resume_rapport(e.rapport))
-                for e in entrees
-            ])
-            choix = self.ecran.choisir(self._page("Journaux — les dernières opérations", aide=AIDE_LISTE), liste)
+
+            def construire():
+                liste = Liste("", [
+                    Element(f"{e.date}  {_nom_operation(e.operation):<14}", e, detail=_resume_rapport(e.rapport))
+                    for e in entrees
+                ])
+                return self._page(t("Quelle opération voulez-vous relire ?"), touches=_touches_liste()), liste
+
+            choix = self.ecran.choisir(construire)
             if choix is None:
                 return
-            rapport = choix.rapport
-            lignes = [Ligne.de(l) for l in rapport.splitlines()] if rapport else [
-                Ligne.de("Pas de rapport pour cette opération (antérieure à l'interface).", GRISE),
-                Ligne.de(""), Ligne.de(f"Journal : {choix.dossier}", AIDE)]
-            self.ecran.afficher(self._page(f"Journal — {choix.date} {choix.operation}", aide=AIDE_LIRE), lignes)
+
+            def construire_rapport(entree=choix):
+                rapport = entree.rapport
+                lignes = [Ligne.de(l) for l in rapport.splitlines()] if rapport else [
+                    Ligne.de(t("Pas de rapport pour cette opération."), GRISE),
+                    Ligne.de(""), Ligne.de(t("Journal : {dossier}", dossier=entree.dossier), DETAIL)]
+                titre = f"{_nom_operation(entree.operation)} — {entree.date}"
+                return self._page(titre, touches=_touches_lire()), lignes
+
+            self.ecran.afficher(construire_rapport)
 
     # --------------------------------------------------------------- étapes ---
 
-    def _choisir_source(self, titre: str) -> devices.Disque | None:
-        elements = []
-        for disque in devices.inventaire():
-            refus = devices.refus_comme_source(disque)
-            elements.append(Element(f"{disque.libelle:<13} {disque.description:<22} "
-                                    f"{texte.taille(disque.taille):>9}", disque,
-                                    actif=not refus, motif=refus, detail=texte.contenu(disque)))
-        if not elements:
-            self._message(titre, [Ligne.de("Aucun disque détecté.", AVERTISSEMENT)])
+    def _choisir_source(self, etapes, titre: str) -> devices.Disque | None:
+        disques = devices.inventaire()
+        if not disques:
+            self._message(titre, [Ligne.de(t("Aucun disque détecté."), AVERTISSEMENT)])
             return None
-        return self.ecran.choisir(self._page(titre, aide=AIDE_LISTE), Liste("", elements))
 
-    def _choisir_cibles(self, titre: str, source: devices.Disque | None = None,
+        def construire():
+            elements = []
+            for disque in disques:
+                refus = devices.refus_comme_source(disque)
+                elements.append(Element(_libelle_disque(disque), disque, actif=not refus, motif=refus,
+                                        detail=texte.contenu(disque)))
+            operation, noms = etapes()
+            return self._page(titre, touches=_touches_liste(), operation=operation, etapes=noms,
+                              etape=0), Liste("", elements)
+
+        return self.ecran.choisir(construire)
+
+    def _choisir_cibles(self, etapes, etape: int, source: devices.Disque | None = None,
                         image=None, precedentes=None) -> list[devices.Disque] | None:
         if source is not None:
             requis, secteur = _taille_requise(source), source.secteur_logique
         else:
             requis, secteur = image.taille_requise, int(image.meta.get("secteur", 512))
-        elements = []
-        for disque in devices.inventaire():
-            if source is not None and disque.chemin == source.chemin:
-                continue
-            motif = devices.refus_comme_cible(disque)
-            if not motif and disque.taille < requis:
-                motif = f"trop petit : {texte.taille(requis)} requis"
-            if not motif and disque.secteur_logique != secteur:
-                motif = f"secteurs de {disque.secteur_logique} octets, la source en a de {secteur}"
-            smart = motif == devices.REFUS_SMART
-            elements.append(Element(f"{disque.libelle:<13} {disque.description:<22} "
-                                    f"{texte.taille(disque.taille):>9}", disque,
-                                    actif=not motif, motif=motif, detail=texte.contenu(disque),
-                                    forcable=smart,
-                                    motif_force="! SMART défaillant, choisi quand même" if smart else ""))
-        liste = Liste("", elements, multiple=True,
-                      explication="Tout le contenu des disques cochés sera effacé.")
-        aide = AIDE_COCHER
-        if any(e.forcable for e in elements):
-            aide += "    F : forcer un disque SMART défaillant"
-        if precedentes:
-            # Revenir de la confirmation ne doit pas faire tout recocher.
-            chemins = {d.chemin for d in precedentes}
-            liste.cocher([e.valeur for e in elements if e.valeur.chemin in chemins])
-        return self.ecran.choisir(self._page(titre, aide=aide), liste)
+        disques = [d for d in devices.inventaire() if source is None or d.chemin != source.chemin]
 
-    def _choisir_stockage(self, titre: str) -> storage.Stockage | None:
+        def construire():
+            elements = []
+            for disque in disques:
+                motif = devices.refus_comme_cible(disque)
+                if not motif and disque.taille < requis:
+                    motif = t("trop petit : {requis} requis", requis=texte.taille(requis))
+                if not motif and disque.secteur_logique != secteur:
+                    motif = t("secteurs de {cible} octets, la source en a de {source}",
+                              cible=disque.secteur_logique, source=secteur)
+                smart = motif == devices.refus_smart()
+                elements.append(Element(_libelle_disque(disque), disque,
+                                        actif=not motif, motif=motif, detail=texte.contenu(disque),
+                                        forcable=smart,
+                                        motif_force=t("SMART défaillant, choisi quand même") if smart else ""))
+            liste = Liste("", elements, multiple=True, valider=t("Continuer avec {n} disque(s)"))
+            if precedentes:
+                # Revenir de la confirmation ne doit pas faire tout recocher.
+                chemins = {d.chemin for d in precedentes}
+                liste.cocher([e.valeur for e in elements if e.valeur.chemin in chemins])
+            touches = _touches_cocher()
+            if any(e.forcable for e in elements):
+                touches.insert(-1, ("F", t("Forcer un disque SMART défaillant")))
+            operation, noms = etapes()
+            page = self._page(t("Vers quels disques ?"), [
+                Ligne.de(t("Tout le contenu des disques cochés sera effacé."), ECHEC)],
+                touches, operation=operation, etapes=noms, etape=etape)
+            return page, liste
+
+        return self.ecran.choisir(construire)
+
+    def _choisir_stockage(self, etapes, etape: int, titre: str) -> storage.Stockage | None:
         """§7.4 : un disque USB ou le partage réseau ; l'étape apparaît toujours."""
         while True:
             candidats = storage.candidats()
-            elements = []
-            for candidat in candidats:
-                libre = f"{texte.taille(candidat.libre)} libres" if candidat.libre is not None else "sera monté"
-                elements.append(Element(candidat.nom, candidat, actif=candidat.utilisable,
-                                        motif=candidat.refus, detail=libre))
-            connexion = self.reglages.reseau
-            libelle = (f"Partage réseau {connexion.unc}" if connexion.renseignee
-                       else "Partage réseau Windows…")
-            elements.append(Element(libelle, "reseau", detail="mot de passe demandé"))
-            choix = self.ecran.choisir(self._page(titre, aide=AIDE_LISTE), Liste("", elements))
+
+            def construire():
+                elements = []
+                for candidat in candidats:
+                    libre = (t("{taille} libres", taille=texte.taille(candidat.libre))
+                             if candidat.libre is not None else t("sera monté"))
+                    elements.append(Element(candidat.nom, candidat, actif=candidat.utilisable,
+                                            motif=candidat.refus, detail=libre))
+                connexion = self.reglages.reseau
+                libelle = (t("Partage réseau {unc}", unc=connexion.unc) if connexion.renseignee
+                           else t("Partage réseau Windows…"))
+                elements.append(Element(libelle, "reseau", detail=t("mot de passe demandé")))
+                operation, noms = etapes()
+                return self._page(titre, touches=_touches_liste(), operation=operation, etapes=noms,
+                                  etape=etape), Liste("", elements)
+
+            choix = self.ecran.choisir(construire)
             if choix is None:
                 return None
             if choix == "reseau":
-                ouvert = self._ouvrir_partage()
+                ouvert = self._ouvrir_partage(etapes, etape)
                 if ouvert is not None:
                     return ouvert
                 continue
@@ -466,107 +595,145 @@ class Application:
             except storage.ErreurStockage as erreur:
                 self._message(titre, [Ligne.de(f"{choix.nom} : {erreur}", AVERTISSEMENT)])
 
-    def _ouvrir_partage(self) -> storage.Stockage | None:
+    def _ouvrir_partage(self, etapes, etape: int) -> storage.Stockage | None:
         connexion = self.reglages.reseau
-        formulaire = Formulaire("", [
-            Champ("Hôte", connexion.hote),
-            Champ("Partage", connexion.partage),
-            Champ("Utilisateur", connexion.utilisateur),
-            Champ("Mot de passe", "", masque=True),
-        ], explication="Partage Windows : \\\\hôte\\partage. Le mot de passe n'est jamais enregistré.")
-        formulaire.curseur = 3 if connexion.renseignee else 0
+        saisi = {}
+
+        def construire():
+            formulaire = Formulaire("", [
+                Champ("hote", t("Hôte"), connexion.hote),
+                Champ("partage", t("Partage"), connexion.partage),
+                Champ("utilisateur", t("Utilisateur"), connexion.utilisateur),
+                Champ("mot_de_passe", t("Mot de passe"), "", masque=True),
+            ], explication=t("Partage Windows : \\\\hôte\\partage. Le mot de passe n'est jamais enregistré."))
+            formulaire.curseur = 3 if connexion.renseignee else 0
+            formulaire.message = saisi.get("message", "")
+            operation, noms = etapes()
+            return self._page(t("À quel partage réseau voulez-vous vous connecter ?"),
+                              touches=_touches_formulaire(), operation=operation, etapes=noms,
+                              etape=etape), formulaire
+
         while True:
-            valeurs = self.ecran.saisir(self._page("Partage réseau", aide=AIDE_FORMULAIRE), formulaire)
+            valeurs = self.ecran.saisir(construire)
             if valeurs is None:
                 return None
-            essai = config.ConnexionReseau(valeurs["Hôte"].strip().strip("\\/"),
-                                           valeurs["Partage"].strip().strip("\\/"),
-                                           valeurs["Utilisateur"].strip())
-            self.ecran.dessiner(self._page("Partage réseau"), [Ligne.de(f"Connexion à {essai.unc}…")])
+            essai = config.ConnexionReseau(valeurs["hote"].strip().strip("\\/"),
+                                           valeurs["partage"].strip().strip("\\/"),
+                                           valeurs["utilisateur"].strip())
+            connexion = essai
+            self.ecran.dessiner(self._page(t("Connexion à {unc}…", unc=essai.unc)), [])
             try:
-                ouvert = storage.ouvrir(storage.partage(essai), valeurs["Mot de passe"])
+                ouvert = storage.ouvrir(storage.partage(essai), valeurs["mot_de_passe"])
             except storage.ErreurStockage as erreur:
-                formulaire.message = str(erreur)
-                formulaire.champs[3].valeur = ""
+                saisi["message"] = str(erreur)
                 continue
             finally:
-                valeurs["Mot de passe"] = ""
+                valeurs["mot_de_passe"] = ""
             # Hôte, partage et utilisateur sont mémorisés ; le mot de passe, jamais.
             self.reglages.reseau = essai
-            config.ecrire(self.reglages)
+            self._memoriser()
             return ouvert
 
     def _choisir_sauvegarde(self, stockage: storage.Stockage):
         sauvegardes = list(reversed(image.lister(stockage.racine)))  # la plus récente en haut
         if not sauvegardes:
-            self._message("Restaurer", [Ligne.de(f"Aucune sauvegarde sur {stockage.nom}.", AVERTISSEMENT)])
+            self._message(t("Restaurer"), [Ligne.de(t("Aucune sauvegarde sur {stockage}.", stockage=stockage.nom),
+                                                     AVERTISSEMENT)])
             return None
-        elements = [
-            Element(f"{img.etiquette:<24} {img.meta.get('date', '?'):<17}", img,
-                    detail=f"{img.origine.get('modele', '?')}, {texte.taille(int(img.origine.get('taille', 0)))}"
-                           f" — sauvegarde de {texte.taille(img.taille_sur_disque)}"
-                           + ("  (copie intégrale)" if img.mode == image.MODE_BRUT else ""))
-            for img in sauvegardes
-        ]
-        return self.ecran.choisir(self._page("Restaurer — quelle sauvegarde ?", aide=AIDE_LISTE),
-                                  Liste("", elements))
+
+        def construire():
+            elements = []
+            for img in sauvegardes:
+                detail = t("{modele}, {taille} — sauvegarde de {poids}",
+                           modele=img.origine.get("modele", "?"),
+                           taille=texte.taille(int(img.origine.get("taille", 0))),
+                           poids=texte.taille(img.taille_sur_disque))
+                if img.mode == image.MODE_BRUT:
+                    detail += t("  (copie intégrale)")
+                elements.append(Element(f"{img.etiquette:<24} {img.meta.get('date', '?'):<17}", img, detail=detail))
+            operation, noms = _etapes_restaurer()
+            return self._page(t("Quelle sauvegarde voulez-vous restaurer ?"), touches=_touches_liste(),
+                              operation=operation, etapes=noms, etape=1), Liste("", elements)
+
+        return self.ecran.choisir(construire)
 
     def _saisir_nom(self, source: devices.Disque, precedent: str | None = None) -> str | None:
         propose = precedent or "".join(
             c if c.isalnum() or c in "-_" else "-" for c in source.description).strip("-")
-        formulaire = Formulaire("", [Champ("Nom de la sauvegarde", propose or "sauvegarde")],
-                                explication="Pour la reconnaître dans la liste de restauration, ex. Win11-labo-info.")
+        saisi = {}
+
+        def construire():
+            formulaire = Formulaire("", [Champ("nom", t("Nom"), propose or "sauvegarde")],
+                                    explication=t("Pour la reconnaître dans la liste de restauration, "
+                                                  "par exemple Win11-labo-info."))
+            formulaire.message = saisi.get("message", "")
+            operation, noms = _etapes_sauvegarder()
+            return self._page(t("Quel nom voulez-vous donner à la sauvegarde ?"), touches=_touches_formulaire(),
+                              operation=operation, etapes=noms, etape=2), formulaire
+
         while True:
-            valeurs = self.ecran.saisir(self._page("Sauvegarder — nom de la sauvegarde", aide=AIDE_FORMULAIRE),
-                                        formulaire)
+            valeurs = self.ecran.saisir(construire)
             if valeurs is None:
                 return None
-            nom = valeurs["Nom de la sauvegarde"].strip()
+            nom = valeurs["nom"].strip()
             if nom:
                 return nom
-            formulaire.message = "Donnez un nom à la sauvegarde."
+            propose = ""
+            saisi["message"] = t("Donnez un nom à la sauvegarde.")
 
     # --------------------------------------------------------- confirmations ---
 
     def _confirmer_clonage(self, source, cibles, plan) -> str | None:
-        lignes = [_ligne_disque("Source", source), Ligne.de("")]
-        lignes.append(Ligne.de("Cibles — TOUT LEUR CONTENU SERA EFFACÉ :", AVERTISSEMENT))
-        lignes += [_ligne_disque("  ", c) for c in cibles]
-        lignes += [Ligne.de("")] + plan.lignes(DEBIT_LECTURE)
-        return self.ecran.confirmer(
-            self._page("Cloner — confirmation", lignes,
-                       aide="↑↓ : choisir    Entrée : valider    I : copie intégrale    Échap : annuler"),
-            [("annuler", "Annuler"), ("lancer", f"Lancer le clonage vers {len(cibles)} disque(s)")],
-            {"i": "brut"})
+        def construire():
+            lignes = [_ligne_disque(t("Source"), source), Ligne.de(""),
+                      Ligne.de(t("Effacés — tout leur contenu sera perdu :"), ECHEC)]
+            lignes += [_ligne_disque("", c) for c in cibles]
+            lignes += [Ligne.de("")] + plan.lignes(DEBIT_LECTURE)
+            operation, noms = _etapes_cloner()
+            page = self._page(t("Tout est prêt. Vérifiez avant de lancer."), lignes,
+                              _touches_confirmer(copie_integrale=True),
+                              operation=operation, etapes=noms, etape=2)
+            return page, [("annuler", t("Annuler")),
+                          ("lancer", t("Lancer le clonage vers {n} disque(s)", n=len(cibles)))]
+        return self.ecran.confirmer(construire, {"i": "brut"})
 
     def _confirmer_sauvegarde(self, source, stockage, nom, plan) -> str | None:
-        lignes = [_ligne_disque("Source", source),
-                  Ligne.de(f"Vers    {stockage.nom}, {texte.taille(stockage.libre)} libres"),
-                  Ligne.de(f"Nom     {nom}"), Ligne.de("")]
-        lignes += plan.lignes(DEBIT_LECTURE)
-        if stockage.libre is not None and stockage.libre < plan.volume:
-            lignes.append(Ligne.de("! Espace libre inférieur au volume à lire : la compression le "
-                                   "réduit souvent assez, sans garantie (§7.5).", AVERTISSEMENT))
-        return self.ecran.confirmer(
-            self._page("Sauvegarder — confirmation", lignes,
-                       aide="↑↓ : choisir    Entrée : valider    I : copie intégrale    Échap : annuler"),
-            [("annuler", "Annuler"), ("lancer", "Lancer la sauvegarde")],
-            {"i": "brut"})
+        def construire():
+            lignes = [_ligne_disque(t("Source"), source),
+                      _ligne_champ(t("Vers"), t("{stockage}, {taille} libres", stockage=stockage.nom,
+                                                taille=texte.taille(stockage.libre))),
+                      _ligne_champ(t("Nom"), nom), Ligne.de("")]
+            lignes += plan.lignes(DEBIT_LECTURE)
+            if stockage.libre is not None and stockage.libre < plan.volume:
+                lignes.append(Ligne.de(t("Espace libre inférieur au volume à lire : la compression le "
+                                         "réduit souvent assez, sans garantie."), AVERTISSEMENT))
+            operation, noms = _etapes_sauvegarder()
+            page = self._page(t("Tout est prêt. Vérifiez avant de lancer."), lignes,
+                              _touches_confirmer(copie_integrale=True),
+                              operation=operation, etapes=noms, etape=3)
+            return page, [("annuler", t("Annuler")), ("lancer", t("Lancer la sauvegarde"))]
+        return self.ecran.confirmer(construire, {"i": "brut"})
 
     def _confirmer_restauration(self, img, stockage, cibles) -> str | None:
         debit = DEBIT_SAUVEGARDE[stockage.reseau]
         volume = img.taille_sur_disque
-        lignes = [Ligne.de(f"Sauvegarde  {img.etiquette}, du {img.meta.get('date', '?')}, "
-                           f"d'un {img.origine.get('modele', '?')}"),
-                  Ligne.de(f"            sur {stockage.nom}"), Ligne.de("")]
-        lignes.append(Ligne.de("Cibles — TOUT LEUR CONTENU SERA EFFACÉ :", AVERTISSEMENT))
-        lignes += [_ligne_disque("  ", c) for c in cibles]
-        lignes += [Ligne.de(""),
-                   Ligne.de(f"La sauvegarde ({texte.taille(volume)}) est d'abord vérifiée, puis copiée : "
-                            f"environ {texte.duree(2 * volume / debit)} en tout.")]
-        return self.ecran.confirmer(
-            self._page("Restaurer — confirmation", lignes, aide="↑↓ : choisir    Entrée : valider    Échap : annuler"),
-            [("annuler", "Annuler"), ("lancer", f"Lancer la restauration vers {len(cibles)} disque(s)")])
+
+        def construire():
+            lignes = [_ligne_champ(t("Sauvegarde"), t("{nom}, du {date}, d'un {modele}", nom=img.etiquette,
+                                                      date=img.meta.get("date", "?"),
+                                                      modele=img.origine.get("modele", "?"))),
+                      _ligne_champ("", t("sur {stockage}", stockage=stockage.nom)), Ligne.de(""),
+                      Ligne.de(t("Effacés — tout leur contenu sera perdu :"), ECHEC)]
+            lignes += [_ligne_disque("", c) for c in cibles]
+            lignes += [Ligne.de(""),
+                       Ligne.de(t("La sauvegarde ({taille}) est d'abord vérifiée, puis copiée : environ {duree} en tout.",
+                                  taille=texte.taille(volume), duree=texte.duree(2 * volume / debit)))]
+            operation, noms = _etapes_restaurer()
+            page = self._page(t("Tout est prêt. Vérifiez avant de lancer."), lignes, _touches_confirmer(),
+                              operation=operation, etapes=noms, etape=3)
+            return page, [("annuler", t("Annuler")),
+                          ("lancer", t("Lancer la restauration vers {n} disque(s)", n=len(cibles)))]
+        return self.ecran.confirmer(construire)
 
     # -------------------------------------------------------------- exécution ---
 
@@ -575,25 +742,26 @@ class Application:
         forcees = frozenset(c.chemin for c in cibles if health.etat(c).niveau == health.DEFAILLANT)
         with Journal(nom_operation) as j:
             operation = clone.Clonage(source, cibles, j, forcer_smart=forcees)
-            titre = "Clonage" if nom_operation == "clonage" else "Restauration"
             suivi = _Suivi(operation, volume)
-            self._executer(operation, lambda: suivi.page(titre))
-            lignes = _rapport_clonage(operation, j, titre)
-            j.ecrire_rapport("\n".join(l.texte() for l in lignes))
+            titre = lambda: t("Clonage") if nom_operation == "clonage" else t("Restauration")
+            self._executer(operation, lambda: suivi.page(self, titre()))
+            j.ecrire_rapport("\n".join(l.texte() for l in _rapport_clonage(operation, j, titre())))
         if self.arret_demande:
             raise ArretDemande()
-        self.ecran.afficher(self._page(f"{titre} — rapport", aide="Entrée : revenir"), lignes)
+        self.ecran.afficher(lambda: (self._page(t("{operation} — rapport", operation=titre()),
+                                                touches=[(t("Entrée"), t("Revenir"))]),
+                                     _rapport_clonage(operation, j, titre())))
 
     def _executer_sauvegarde(self, source, stockage, nom, plan) -> None:
         with Journal("sauvegarde") as j:
             operation = backup.Sauvegarde(source, stockage.racine, nom, j, brut=plan.brut)
             suivi = _Suivi(operation, plan.volume)
-            self._executer(operation, lambda: suivi.page("Sauvegarde"))
-            lignes = _rapport_sauvegarde(operation, j, stockage)
-            j.ecrire_rapport("\n".join(l.texte() for l in lignes))
+            self._executer(operation, lambda: suivi.page(self, t("Sauvegarde")))
+            j.ecrire_rapport("\n".join(l.texte() for l in _rapport_sauvegarde(operation, j, stockage)))
         if self.arret_demande:
             raise ArretDemande()
-        self.ecran.afficher(self._page("Sauvegarde — rapport", aide="Entrée : revenir"), lignes)
+        self.ecran.afficher(lambda: (self._page(t("Sauvegarde — rapport"), touches=[(t("Entrée"), t("Revenir"))]),
+                                     _rapport_sauvegarde(operation, j, stockage)))
 
     def _executer(self, operation, construire) -> None:
         erreurs = []
@@ -604,10 +772,16 @@ class Application:
             except BaseException as erreur:  # déjà consignée par l'opération
                 erreurs.append(erreur)
 
+        def confirmer_arret():
+            page = self._page(t("Interrompre l'opération ?"), [
+                Ligne.de(t("Les disques en cours d'écriture seront déclarés invalides."), ECHEC)],
+                [("↑↓", t("Choisir")), (t("Entrée"), t("Valider"))])
+            return page, [("continuer", t("Continuer l'opération")), ("interrompre", t("Interrompre"))]
+
         fil = threading.Thread(target=tourner, name="operation")
         fil.start()
         try:
-            self.ecran.suivre(construire, fil.is_alive, operation.arreter)
+            self.ecran.suivre(construire, fil.is_alive, operation.arreter, confirmer_arret)
         except ArretDemande:
             # §13 : une coupure arrête proprement les écritures ; les cibles
             # sont déclarées interrompues, et le rapport est quand même écrit.
@@ -617,12 +791,13 @@ class Application:
 
     # ---------------------------------------------------------------- outils ---
 
-    def _page(self, titre: str, entete=None, aide: str = "") -> Page:
-        mode = "Mode station — " if self.reglages.mode == config.MODE_STATION else ""
-        return Page(f"{mode}{titre}", entete or [], aide)
+    def _page(self, titre: str, entete=None, touches=None, operation: str = "", etapes=None,
+              etape: int = -1) -> Page:
+        mode = t("Mode station") if self.reglages.mode == config.MODE_STATION else t("Mode libre")
+        return Page(titre, entete or [], touches or [], operation, etapes or [], etape, mode)
 
     def _message(self, titre: str, lignes: list[Ligne]) -> None:
-        self.ecran.afficher(self._page(titre, aide="Entrée : revenir"), lignes)
+        self.ecran.afficher(lambda: (self._page(titre, touches=[(t("Entrée"), t("Revenir"))]), lignes))
 
 
 # ---------------------------------------------------------------- calculs ---
@@ -634,7 +809,7 @@ class _Plan:
         self.disque = disque
         self.brut = brut
         self.volume = 0
-        self.notes: list[Ligne] = []
+        self._notes: list[tuple[int, str, int]] = []  # numéro, raison, volume
         if brut:
             self.volume = disque.taille
             return
@@ -648,16 +823,20 @@ class _Plan:
             volume = filesystems.volume_a_copier(partition, choix)
             self.volume += volume
             if choix.avertissement:
-                self.notes.append(Ligne.de(
-                    f"! partition {entree.numero} : {choix.raison} — {texte.taille(volume)}, "
-                    f"environ {texte.duree(volume / DEBIT_LECTURE)} à elle seule", AVERTISSEMENT))
+                self._notes.append((entree.numero, choix.raison, volume))
 
     def lignes(self, debit: float) -> list[Ligne]:
         if self.brut:
-            return [Ligne.de(f"Copie intégrale du disque, secteur par secteur : {texte.taille(self.volume)}, "
-                             f"environ {texte.duree(self.volume / debit)}. LENT.", AVERTISSEMENT)]
-        return [Ligne.de(f"À copier : {texte.taille(self.volume)}, environ "
-                         f"{texte.duree(self.volume / debit)}.")] + self.notes
+            return [_ligne_champ(t("À copier"), t("tout le disque, secteur par secteur : {taille}, environ {duree}. "
+                                                  "C'est lent.", taille=texte.taille(self.volume),
+                                                  duree=texte.duree(self.volume / debit)), AVERTISSEMENT)]
+        lignes = [_ligne_champ(t("À copier"), t("{taille}, environ {duree}", taille=texte.taille(self.volume),
+                                                duree=texte.duree(self.volume / debit)))]
+        for numero, raison, volume in self._notes:
+            lignes.append(Ligne.de(t("Partition {numero} : {raison} — {taille}, environ {duree} à elle seule",
+                                     numero=numero, raison=raison, taille=texte.taille(volume),
+                                     duree=texte.duree(volume / DEBIT_LECTURE)), AVERTISSEMENT))
+        return lignes
 
 
 def _plan_disque(disque: devices.Disque, brut: bool | None = None) -> _Plan:
@@ -702,93 +881,136 @@ class _Suivi:
         self.volume = volume
         self.debut = time.monotonic()
         self._terminees = 0
+        self._ecrits: dict[str, int] = {}  # par cible, les partitions terminées
         self._courante = None
 
-    def page(self, titre: str):
+    def page(self, app: Application, titre: str):
         operation = self.operation
         diffusion = operation.diffusion
         if diffusion is not self._courante:
             if self._courante is not None:
                 self._terminees += self._courante.octets_lus
+                for cible in self._courante.cibles:
+                    self._ecrits[cible.nom] = self._ecrits.get(cible.nom, 0) + cible.octets
             self._courante = diffusion
         lu = self._terminees + (diffusion.octets_lus if diffusion else 0)
         ecoule = time.monotonic() - self.debut
 
-        lignes = [Ligne.de(f"Étape    {operation.etape}"),
-                  Ligne.de(f"Écoulé   {texte.duree(ecoule)}")]
+        entete = [_ligne_champ(t("Étape"), operation.etape)]
         if isinstance(operation, backup.Sauvegarde):
-            lignes.append(Ligne.de(f"Écrit    {texte.taille(lu)} compressés"))
+            entete.append(_ligne_champ(t("Écrit"), t("{taille} compressés", taille=texte.taille(lu))))
         elif self.volume:
             part = min(100, 100 * lu / self.volume)
-            reste = ""
+            valeur = t("{lu} sur {total} ({part} %)", lu=texte.taille(lu), total=texte.taille(self.volume),
+                       part=f"{part:.0f}")
             # Au tout début, ou si une cible bloque la lecture, l'estimation n'a
             # aucun sens (« 934 h ») : ne la donner qu'une fois la copie lancée.
             if part >= 1 and ecoule >= 30 and part < 100:
-                reste = f" — reste environ {texte.duree(ecoule * (self.volume - lu) / lu)}"
-            lignes.append(Ligne.de(f"Lu       {texte.taille(lu)} sur ~{texte.taille(self.volume)} "
-                                   f"({part:.0f} %){reste}"))
-        lignes.append(Ligne.de(""))
+                valeur += t(" — reste environ {duree}", duree=texte.duree(ecoule * (self.volume - lu) / lu))
+            entete.append(_ligne_champ(t("Lu"), valeur))
+        entete.append(_ligne_champ(t("Écoulé"), texte.duree(ecoule)))
 
-        debits = {c.nom: c for c in diffusion.cibles} if diffusion else {}
+        lignes = []
+        suivis = {c.nom: c for c in diffusion.cibles} if diffusion else {}
         if isinstance(operation, clone.Clonage):
             for cible in operation.cibles:
-                suivi = debits.get(cible.nom)
+                suivi = suivis.get(cible.nom)
+                nom = Ligne([(f"{cible.disque.emplacement.nom if cible.disque.emplacement else cible.nom:<7} "
+                              f"{cible.disque.nom_noyau:<8} ", FORT)])
+                if cible.etat in (fanout.EN_COURS, clone.REUSSIE) and self.volume:
+                    ecrit = self._ecrits.get(cible.nom, 0) + (suivi.octets if suivi else 0)
+                    fraction = 1.0 if cible.etat == clone.REUSSIE else min(1.0, ecrit / self.volume)
+                    nom.morceaux += barre(fraction) + [(f" {fraction * 100:3.0f} %  ", NORMAL)]
                 if cible.etat == fanout.EN_COURS:
-                    etat = f"en cours   {texte.debit(suivi.debit)}" if suivi and suivi.active else "en cours"
-                    style = NORMAL
+                    nom.morceaux.append((texte.debit(suivi.debit) if suivi and suivi.active else "", DETAIL))
                 elif cible.etat == clone.REUSSIE:
-                    etat, style = "RÉUSSIE", OK
+                    nom.morceaux.append((_nom_etat(cible.etat), OK))
                 elif cible.etat == clone.EN_ATTENTE:
-                    etat, style = "en attente", GRISE
+                    nom.morceaux.append((_nom_etat(cible.etat), GRISE))
                 else:
-                    etat = cible.etat.upper() + (f" — {cible.motif}" if cible.motif else "")
-                    style = ECHEC
-                lignes.append(Ligne([(f"  {cible.disque.libelle:<14} ", FORT), (etat, style)]))
+                    nom.morceaux.append((f"✗ {_nom_etat(cible.etat)}" + (f" — {cible.motif}" if cible.motif else ""),
+                                         ECHEC))
+                lignes.append(nom)
         elif diffusion:
             suivi = diffusion.cibles[0]
-            lignes.append(Ligne.de(f"  {suivi.nom}   {texte.debit(suivi.debit)}"))
-        return (Page(f"{titre} en cours", [], "Échap : interrompre"), lignes)
+            lignes.append(Ligne([(t("Débit"), FORT), (f"   {texte.debit(suivi.debit)}", NORMAL)]))
+        page = app._page(t("{operation} en cours", operation=titre), entete, [(t("Échap"), t("Interrompre"))])
+        return page, lignes
 
 
-def _ligne_disque(prefixe: str, disque: devices.Disque) -> Ligne:
-    return Ligne([(f"{prefixe:<8}", NORMAL), (f"{disque.libelle:<14}", FORT),
-                  (f" {disque.description}, s/n {disque.serie or '?'}, {texte.taille(disque.taille)}", NORMAL)])
+def _libelle_disque(disque: devices.Disque) -> str:
+    """« SATA2   sdb      Kingston SA400S3      480.1 GB » : l'emplacement d'abord,
+    le nom système à titre indicatif (P3)."""
+    emplacement = disque.emplacement.nom if disque.emplacement else ""
+    return (f"{emplacement:<7} {disque.nom_noyau:<8} {disque.description[:22]:<22} "
+            f"{texte.taille(disque.taille):>9}")
+
+
+def _ligne_champ(libelle: str, valeur: str, style: str = NORMAL) -> Ligne:
+    return Ligne([(f"{libelle:<{COLONNE}}", DETAIL), (valeur, style)])
+
+
+def _ligne_disque(libelle: str, disque: devices.Disque) -> Ligne:
+    return Ligne([(f"{libelle:<{COLONNE}}", DETAIL), (_libelle_disque(disque), FORT),
+                  (f"   s/n {disque.serie or '?'}", DETAIL)])
+
+
+def _nom_etat(etat: str) -> str:
+    """Le verdict d'une cible, dans la langue de l'interface."""
+    return {
+        fanout.EN_ATTENTE: t("en attente"),
+        fanout.EN_COURS: t("en cours"),
+        fanout.REUSSIE: t("RÉUSSIE"),
+        fanout.ECHEC: t("ÉCHEC"),
+        fanout.BLOQUEE: t("BLOQUÉE"),
+        fanout.INTERROMPUE: t("INTERROMPUE"),
+        clone.ECARTEE: t("ÉCARTÉE"),
+    }.get(etat, etat.upper())
+
+
+def _nom_operation(operation: str) -> str:
+    return {"clonage": t("Clonage"), "sauvegarde": t("Sauvegarde"),
+            "restauration": t("Restauration")}.get(operation, operation)
 
 
 def _rapport_clonage(operation: clone.Clonage, j: Journal, titre: str) -> list[Ligne]:
     reussies = sum(1 for c in operation.cibles if c.etat == clone.REUSSIE)
-    lignes = [Ligne.de(f"{titre} du {time.strftime('%Y-%m-%d %H:%M')} — {reussies} réussie(s) "
-                       f"sur {len(operation.cibles)}", FORT),
-              Ligne.de(f"Source : {operation.source.description}"),
-              Ligne.de(f"Durée totale : {texte.duree(operation.duree)}"), Ligne.de("")]
+    lignes = [Ligne.de(t("{operation} du {date} — {n} réussie(s) sur {total}", operation=titre,
+                         date=time.strftime("%Y-%m-%d %H:%M"), n=reussies, total=len(operation.cibles)),
+                       OK if reussies == len(operation.cibles) else ECHEC),
+              Ligne.de(""),
+              _ligne_champ(t("Source"), operation.source.description),
+              _ligne_champ(t("Durée totale"), texte.duree(operation.duree)), Ligne.de("")]
     for cible in operation.cibles:
         style = OK if cible.etat == clone.REUSSIE else ECHEC
         lignes.append(Ligne([(f"  {cible.disque.libelle:<14} s/n {cible.disque.serie or '?':<18} ", NORMAL),
-                             (cible.etat.upper(), style),
+                             (_nom_etat(cible.etat), style),
                              ((f" — {cible.motif}" if cible.motif else ""), NORMAL)]))
         for avertissement in cible.avertissements:
             lignes.append(Ligne.de(f"      ! {avertissement}", AVERTISSEMENT))
-    lignes += [Ligne.de(""), Ligne.de(f"Journal : {j.dossier}", AIDE)]
+    lignes += [Ligne.de(""), _ligne_champ(t("Journal"), j.dossier)]
     return lignes
 
 
 def _rapport_sauvegarde(operation: backup.Sauvegarde, j: Journal, stockage) -> list[Ligne]:
     reussie = operation.etat == backup.REUSSIE
-    lignes = [Ligne.de(f"Sauvegarde du {time.strftime('%Y-%m-%d %H:%M')} — "
-                       f"{'RÉUSSIE' if reussie else operation.etat.upper()}", OK if reussie else ECHEC),
-              Ligne.de(f"Source : {operation.source.description}"),
-              Ligne.de(f"Vers : {stockage.nom}"),
-              Ligne.de(f"Durée totale : {texte.duree(operation.duree)}"), Ligne.de("")]
+    lignes = [Ligne.de(t("Sauvegarde du {date} — {etat}", date=time.strftime("%Y-%m-%d %H:%M"),
+                         etat=_nom_etat(operation.etat)), OK if reussie else ECHEC),
+              Ligne.de(""),
+              _ligne_champ(t("Source"), operation.source.description),
+              _ligne_champ(t("Vers"), stockage.nom),
+              _ligne_champ(t("Durée totale"), texte.duree(operation.duree)), Ligne.de("")]
     if reussie:
         img = image.lire(operation.dossier)
-        lignes.append(Ligne.de(f"Sauvegarde « {img.etiquette} » : {texte.taille(img.taille_sur_disque)}"))
-        lignes.append(Ligne.de(f"Dossier : {storage.chemin_affiche(stockage, operation.dossier)}", AIDE))
+        lignes.append(_ligne_champ(t("Sauvegarde"), f"« {img.etiquette} », {texte.taille(img.taille_sur_disque)}"))
+        lignes.append(_ligne_champ(t("Dossier"), storage.chemin_affiche(stockage, operation.dossier)))
     else:
-        lignes.append(Ligne.de(f"Motif : {operation.motif}", ECHEC))
-        lignes.append(Ligne.de("Le dossier reste incomplet : il ne sera jamais proposé à la restauration.", AIDE))
+        lignes.append(_ligne_champ(t("Motif"), operation.motif, ECHEC))
+        lignes.append(Ligne.de(t("Le dossier reste incomplet : il ne sera jamais proposé à la restauration."),
+                               DETAIL))
     for avertissement in operation.avertissements:
         lignes.append(Ligne.de(f"! {avertissement}", AVERTISSEMENT))
-    lignes += [Ligne.de(""), Ligne.de(f"Journal : {j.dossier}", AIDE)]
+    lignes += [Ligne.de(""), _ligne_champ(t("Journal"), j.dossier)]
     return lignes
 
 
@@ -808,9 +1030,10 @@ def demarrer() -> int:
     from .. import verrou
     from .ecran import Ecran
 
+    langue.choisir(config.lire().langue)
     tenu = verrou.prendre()
     if tenu is None:
-        print("CloneGator est déjà ouvert sur un autre écran de cette machine.")
+        print(t("CloneGator est déjà ouvert sur un autre écran de cette machine."))
         return 1
     locale.setlocale(locale.LC_ALL, "")
     os.environ.setdefault("ESCDELAY", "25")  # Échap répond tout de suite

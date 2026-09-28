@@ -18,6 +18,10 @@ import unittest
 from clonegator import devices, journal, layout, sysexec
 from clonegator.engine import clone
 
+from clonegator import langue
+
+langue.choisir(langue.FRANCAIS)  # les motifs attendus sont écrits en français
+
 BANC = os.environ.get("CLONEGATOR_BANC", "/var/tmp/clonegator-banc")
 MANIFESTE = os.path.join(BANC, "source-gpt.sha256")
 

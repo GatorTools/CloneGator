@@ -13,7 +13,8 @@ import logging
 import os
 import sys
 
-from . import VERSION, devices, essais, journal, verrou
+from . import VERSION, config, devices, essais, journal, langue, verrou
+from .langue import t
 from .texte import contenu, taille as taille_lisible
 
 
@@ -177,10 +178,14 @@ def main(argv: list[str] | None = None) -> int:
     args = construire_analyseur().parse_args(argv)
     fonction = getattr(args, "fonction", cmd_interface)
 
+    # L'interface parle la langue choisie par l'opérateur ; les sous-commandes,
+    # outils de développement, parlent français.
+    langue.choisir(config.lire().langue if fonction is cmd_interface else langue.FRANCAIS)
+
     # Lire et écrire des disques exige root. Le dire clairement, plutôt que de
     # laisser une erreur Python à l'écran.
     if os.geteuid() != 0 and fonction is not cmd_version:
-        print("CloneGator doit être lancé en root :  sudo clonegator", file=sys.stderr)
+        print(t("CloneGator doit être lancé en root :  sudo clonegator"), file=sys.stderr)
         return 1
     format_ = logging.Formatter("%(asctime)s %(levelname)s %(name)s : %(message)s")
 

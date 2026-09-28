@@ -17,6 +17,7 @@ import tempfile
 
 from . import montage, sysexec
 from .config import ConnexionReseau
+from .langue import t
 
 _log = logging.getLogger("clonegator.reseau")
 
@@ -31,7 +32,7 @@ def monter(connexion: ConnexionReseau, mot_de_passe: str) -> str:
     """Monte le partage et rend son point de montage. Lève ErreurReseau, avec un
     motif compréhensible, s'il est injoignable ou refuse la connexion."""
     if not connexion.renseignee:
-        raise ErreurReseau("hôte ou partage non renseigné")
+        raise ErreurReseau(t("hôte ou partage non renseigné"))
     demonter()  # un reste d'une opération précédente
     os.makedirs(montage.RACINE, exist_ok=True)
     os.makedirs(POINT, exist_ok=True)
@@ -69,14 +70,14 @@ def _motif(resultat: sysexec.Resultat, connexion: ConnexionReseau) -> str:
     """Le message de mount.cifs, traduit pour l'opérateur."""
     texte = f"{resultat.erreur} {resultat.sortie}"
     if resultat.expire:
-        return f"{connexion.hote} ne répond pas"
+        return t("{hote} ne répond pas", hote=connexion.hote)
     if "error(13)" in texte:
-        return f"identifiants refusés par {connexion.hote}"
+        return t("identifiants refusés par {hote}", hote=connexion.hote)
     if "error(2)" in texte or "error(6)" in texte:
-        return f"partage « {connexion.partage} » introuvable sur {connexion.hote}"
+        return t("partage « {partage} » introuvable sur {hote}", partage=connexion.partage, hote=connexion.hote)
     if any(code in texte for code in ("error(113)", "error(112)", "error(101)", "could not connect")):
-        return f"{connexion.hote} injoignable"
+        return t("{hote} injoignable", hote=connexion.hote)
     if "error(11)" in texte or "error(115)" in texte:
-        return f"{connexion.hote} ne répond pas"
+        return t("{hote} ne répond pas", hote=connexion.hote)
     lignes = [ligne.strip() for ligne in texte.splitlines() if ligne.strip()]
-    return lignes[-1] if lignes else "montage du partage impossible"
+    return lignes[-1] if lignes else t("montage du partage impossible")

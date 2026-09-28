@@ -22,6 +22,7 @@ import time
 from dataclasses import dataclass
 
 from . import VERSION, sysexec
+from .langue import t
 
 _log = logging.getLogger("clonegator.image")
 
@@ -168,7 +169,8 @@ def verifier_empreintes(image: Image, suivre=None) -> str:
     if resultat.ok:
         return ""
     defauts = [l for l in b"".join(morceaux).decode(errors="replace").splitlines() if l.strip()]
-    return "image altérée — " + ("; ".join(defauts[:3]) or resultat.erreur.strip() or "vérification impossible")
+    return t("image altérée — {defauts}",
+             defauts="; ".join(defauts[:3]) or resultat.erreur.strip() or t("vérification impossible"))
 
 
 def empreinte_fichier(chemin: str) -> str:

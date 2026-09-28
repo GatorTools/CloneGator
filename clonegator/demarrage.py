@@ -15,6 +15,7 @@ import os
 import sys
 
 from . import sysexec
+from .langue import t
 
 _log = logging.getLogger("clonegator.demarrage")
 
@@ -75,13 +76,13 @@ def activer() -> str:
         with open(FICHIER_UNITE, "w", encoding="utf-8") as fichier:
             fichier.write(_contenu())
     except OSError as erreur:
-        return f"unité systemd non écrite : {erreur.strerror}"
+        return t("unité systemd non écrite : {erreur}", erreur=erreur.strerror)
     for argv in (["systemctl", "daemon-reload"],
                  ["systemctl", "disable", GETTY],
                  ["systemctl", "enable", UNITE]):
         resultat = sysexec.executer(argv)
         if not resultat.ok:
-            return f"{' '.join(argv)} a échoué : {resultat.erreur.strip()}"
+            return t("{commande} a échoué : {erreur}", commande=" ".join(argv), erreur=resultat.erreur.strip())
     _log.info("lancement automatique activé")
     return ""
 
@@ -94,6 +95,6 @@ def desactiver() -> str:
                  ["systemctl", "enable", GETTY]):
         resultat = sysexec.executer(argv)
         if not resultat.ok:
-            return f"{' '.join(argv)} a échoué : {resultat.erreur.strip()}"
+            return t("{commande} a échoué : {erreur}", commande=" ".join(argv), erreur=resultat.erreur.strip())
     _log.info("lancement automatique désactivé")
     return ""

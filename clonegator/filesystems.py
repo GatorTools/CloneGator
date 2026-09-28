@@ -24,6 +24,7 @@ from dataclasses import dataclass
 
 from . import sysexec
 from .devices import Partition
+from .langue import t
 
 _log = logging.getLogger("clonegator.filesystems")
 
@@ -46,11 +47,12 @@ PROGRAMMES = {
 }
 
 # Codes de retour de ntfs-3g.probe, tels que ntfs-3g les définit.
-_ETATS_NTFS = {
-    13: "NTFS endommagé",
-    14: "NTFS hiberné (Windows mis en veille prolongée ou démarrage rapide)",
-    15: "NTFS non démonté proprement",
-}
+def _etat_ntfs(code: int) -> str:
+    return {
+        13: t("NTFS endommagé"),
+        14: t("NTFS hiberné (Windows mis en veille prolongée ou démarrage rapide)"),
+        15: t("NTFS non démonté proprement"),
+    }.get(code) or t("NTFS illisible (ntfs-3g.probe : code {code})", code=code)
 
 
 @dataclass
@@ -67,7 +69,7 @@ class Choix:
 
 def choisir(partition: Partition, etendue: bool = False) -> Choix:
     if etendue:
-        return Choix(AUCUN, raison="partition étendue, décrite par la table")
+        return Choix(AUCUN, raison=t("partition étendue, décrite par la table"))
 
     fstype = (partition.fstype or "").lower()
     if fstype == "swap":
@@ -76,16 +78,16 @@ def choisir(partition: Partition, etendue: bool = False) -> Choix:
     programme = PROGRAMMES.get(fstype)
     if programme is None:
         if not fstype:
-            motif = "aucun système de fichiers reconnu"
+            motif = t("aucun système de fichiers reconnu")
         else:
-            motif = f"« {fstype} » non pris en charge par partclone"
+            motif = t("« {fstype} » non pris en charge par partclone", fstype=fstype)
         # Cas normal, pas une alerte : la partition réservée de Windows, par
         # exemple, n'a jamais de système de fichiers.
         return Choix(BRUT, raison=motif)
 
     salete = _salete(partition, fstype)
     if salete:
-        return Choix(BRUT, raison=f"{salete} : copie intégrale", avertissement=True)
+        return Choix(BRUT, raison=t("{motif} : copie intégrale", motif=salete), avertissement=True)
 
     return Choix(PARTCLONE, programme)
 
@@ -97,15 +99,15 @@ def _salete(partition: Partition, fstype: str) -> str:
         sonde = sysexec.executer(["ntfs-3g.probe", "--readonly", partition.chemin])
         if sonde.ok:
             return ""
-        return _ETATS_NTFS.get(sonde.code, f"NTFS illisible (ntfs-3g.probe : code {sonde.code})")
+        return _etat_ntfs(sonde.code)
 
     if fstype.startswith("ext"):
         entete = sysexec.executer(["dumpe2fs", "-h", partition.chemin])
         for ligne in entete.sortie.splitlines():
             if ligne.startswith("Filesystem state:"):
                 etat = ligne.split(":", 1)[1].strip()
-                return "" if etat == "clean" else f"{fstype} dans l'état « {etat} »"
-        return f"{fstype} illisible (dumpe2fs)"
+                return "" if etat == "clean" else t("{fstype} dans l'état « {etat} »", fstype=fstype, etat=etat)
+        return t("{fstype} illisible (dumpe2fs)", fstype=fstype)
 
     return ""
 

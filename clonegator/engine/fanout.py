@@ -37,6 +37,8 @@ import threading
 import time
 from dataclasses import dataclass, field
 
+from ..langue import t
+
 _log = logging.getLogger("clonegator.fanout")
 
 Mio = 1024 * 1024
@@ -227,7 +229,7 @@ class Diffusion:
             if isinstance(erreur, KeyboardInterrupt):
                 self._arret.set()
             elif not self.motif_source:
-                self.motif_source = f"diffusion abandonnée : {erreur!r}"
+                self.motif_source = t("diffusion abandonnée : {erreur}", erreur=repr(erreur))
             raise
         finally:
             self._terminer()
@@ -254,7 +256,7 @@ class Diffusion:
             try:
                 bloc = _remplir(self.source, taille)
             except OSError as erreur:
-                self.motif_source = f"lecture de la source impossible : {erreur}"
+                self.motif_source = t("lecture de la source impossible : {erreur}", erreur=erreur)
                 _log.error("%s", self.motif_source)
                 return
 
@@ -285,15 +287,15 @@ class Diffusion:
         inactif = time.monotonic() - voie.cible.dernier_progres
         if voie.cible.synchronisation:
             if inactif > max(self.delai_blocage, DELAI_SYNCHRONISATION):
-                voie.conclure(BLOQUEE, f"synchronisation finale sans fin depuis {inactif:.0f} s")
+                voie.conclure(BLOQUEE, t("synchronisation finale sans fin depuis {n} s", n=f"{inactif:.0f}"))
         elif inactif > self.delai_blocage:
-            voie.conclure(BLOQUEE, f"aucune écriture depuis {inactif:.0f} s")
+            voie.conclure(BLOQUEE, t("aucune écriture depuis {n} s", n=f"{inactif:.0f}"))
 
     # --------------------------------------------------------------- fin ---
 
     def _terminer(self) -> None:
         if self._arret.is_set():
-            motif_global = (INTERROMPUE, "diffusion interrompue")
+            motif_global = (INTERROMPUE, t("diffusion interrompue"))
         elif self.motif_source:
             motif_global = (ECHEC, self.motif_source)
         else:
@@ -313,7 +315,7 @@ class Diffusion:
             while voie.cible.active and voie.fil.is_alive():
                 voie.fil.join(timeout=_SCRUTATION)
                 self._verifier_blocage(voie)
-            voie.conclure(ECHEC, "fil d'écriture arrêté sans verdict")
+            voie.conclure(ECHEC, t("fil d'écriture arrêté sans verdict"))
 
     # ------------------------------------------------------------ écriture ---
 
@@ -352,7 +354,7 @@ class Diffusion:
             voie.conclure(ECHEC, _decrire(erreur))
         except Exception as erreur:
             _log.exception("%s : erreur interne", cible.nom)
-            voie.conclure(ECHEC, f"erreur interne : {erreur!r}")
+            voie.conclure(ECHEC, t("erreur interne : {erreur}", erreur=repr(erreur)))
         finally:
             _vider(voie.file)
 
@@ -458,5 +460,5 @@ def _vider(file: queue.Queue) -> None:
 
 def _decrire(erreur: OSError) -> str:
     if isinstance(erreur, BrokenPipeError):
-        return "le programme destinataire s'est arrêté"
-    return f"écriture impossible : {erreur.strerror or erreur}"
+        return t("le programme destinataire s'est arrêté")
+    return t("écriture impossible : {erreur}", erreur=erreur.strerror or erreur)

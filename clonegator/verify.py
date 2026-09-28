@@ -17,6 +17,7 @@ import os
 
 from . import layout, sysexec
 from .devices import Disque
+from .langue import t
 
 _log = logging.getLogger("clonegator.verify")
 
@@ -60,9 +61,9 @@ def verifier(
         finally:
             os.close(fd)
         if tete != tete_source[:_CODE_AMORCE]:
-            problemes.append("code d'amorçage différent de la source")
+            problemes.append(t("code d'amorçage différent de la source"))
     except OSError as erreur:
-        problemes.append(f"tête du disque illisible : {erreur.strerror}")
+        problemes.append(t("tête du disque illisible : {erreur}", erreur=erreur.strerror))
 
     chemins = {partition.numero: partition.chemin for partition in cible.partitions}
     for numero, fstype in sorted(fstypes.items()):
@@ -74,7 +75,8 @@ def verifier(
         if not resultat.ok:
             detail = (resultat.erreur or resultat.sortie).strip().splitlines()
             problemes.append(
-                f"partition {numero} ({fstype}) refusée par {controle[0]}"
+                t("partition {numero} ({fstype}) refusée par {programme}", numero=numero, fstype=fstype,
+                  programme=controle[0])
                 + (f" : {detail[-1]}" if detail else "")
             )
     return problemes

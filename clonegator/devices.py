@@ -26,6 +26,7 @@ import re
 from dataclasses import dataclass, field
 
 from . import health, image, montage, sysexec
+from .langue import t
 
 _log = logging.getLogger("clonegator.devices")
 
@@ -34,9 +35,18 @@ BUS_NVME = "nvme"
 BUS_USB = "usb"
 BUS_AUTRE = "autre"
 
-REFUS_SYSTEME = "utilisé par le système"
-REFUS_SAUVEGARDES = "contient des sauvegardes CloneGator"
-REFUS_SMART = "SMART : défaillant, le disque se déclare lui-même en fin de vie"
+
+# Les motifs de refus, dans la langue de l'interface au moment où on les lit.
+def refus_systeme() -> str:
+    return t("utilisé par le système")
+
+
+def refus_sauvegardes() -> str:
+    return t("contient des sauvegardes CloneGator")
+
+
+def refus_smart() -> str:
+    return t("SMART : défaillant, le disque se déclare lui-même en fin de vie")
 
 _COLONNES = (
     "PATH,TYPE,SIZE,MODEL,SERIAL,TRAN,PTTYPE,LOG-SEC,FSTYPE,MOUNTPOINT,FSUSED,UUID,LABEL"
@@ -336,7 +346,7 @@ def contient_sauvegardes(disque: Disque) -> bool:
 
 def refus_comme_source(disque: Disque) -> str:
     """Motif pour lequel ce disque ne peut pas être source, ou chaîne vide."""
-    return REFUS_SYSTEME if utilise_par_le_systeme(disque) else ""
+    return refus_systeme() if utilise_par_le_systeme(disque) else ""
 
 
 def refus_comme_cible(disque: Disque, forcer_smart: bool = False) -> str:
@@ -347,11 +357,11 @@ def refus_comme_cible(disque: Disque, forcer_smart: bool = False) -> str:
     L'opérateur peut forcer ; les deux filets de P2, eux, ne se forcent pas.
     """
     if utilise_par_le_systeme(disque):
-        return REFUS_SYSTEME
+        return refus_systeme()
     if contient_sauvegardes(disque):
-        return REFUS_SAUVEGARDES
+        return refus_sauvegardes()
     if not forcer_smart and health.etat(disque).niveau == health.DEFAILLANT:
-        return REFUS_SMART
+        return refus_smart()
     return ""
 
 

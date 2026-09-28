@@ -25,6 +25,7 @@ import time
 from .. import filesystems, image, sysexec
 from ..devices import Disque
 from ..journal import Journal
+from ..langue import t
 from . import fanout
 from .sources import ErreurSource, Flux, Plan, SourceDisque
 
@@ -77,7 +78,7 @@ class Sauvegarde:
         self.etat = fanout.EN_COURS
         self.motif = ""
         self.avertissements: list[str] = []
-        self.etape = "préparation"
+        self.etape = t("préparation")
         self.diffusion: fanout.Diffusion | None = None
         self.duree = 0.0
 
@@ -99,13 +100,14 @@ class Sauvegarde:
             self.source.preparer()
             self._derouler()
             self.etat = REUSSIE
-            self.etape = "terminé"
+            self.etape = t("terminé")
         except (ErreurSource, ErreurSauvegarde, OSError) as erreur:
             self.etat = INTERROMPUE if self._arret.is_set() else ECHEC
             self.motif = str(erreur)
         except BaseException as erreur:
             self.etat = INTERROMPUE if isinstance(erreur, KeyboardInterrupt) else ECHEC
-            self.motif = "sauvegarde interrompue" if self.etat == INTERROMPUE else f"erreur interne : {erreur!r}"
+            self.motif = (t("sauvegarde interrompue") if self.etat == INTERROMPUE
+                          else t("erreur interne : {erreur}", erreur=repr(erreur)))
             if self.etat == ECHEC:
                 _log.exception("erreur interne")
             raise
@@ -128,14 +130,14 @@ class Sauvegarde:
         os.mkdir(self.dossier)  # jamais d'écrasement d'une image existante
 
         if self.source.brut:
-            self.etape = "copie intégrale du disque"
+            self.etape = t("copie intégrale du disque")
             self._compresser(self.source.ouvrir_disque_brut(self.journal),
-                             image.DISQUE_BRUT, "disque entier")
+                             image.DISQUE_BRUT, t("disque entier"))
             partitions = []
             taille_requise = self.disque.taille
         else:
             table = self.source.table
-            self.etape = "tête du disque et table"
+            self.etape = t("tête du disque et table")
             self._ecrire_petit(image.TABLE, table.description.encode())
             flux = self.source.ouvrir_tete()
             try:
@@ -146,14 +148,14 @@ class Sauvegarde:
 
             partitions = []
             for rang, plan in enumerate(self.source.plans, start=1):
-                self.etape = (f"partition {plan.entree.numero} ({rang} sur "
-                              f"{len(self.source.plans)}) — {plan.choix}")
+                self.etape = t("partition {numero} ({rang} sur {total}) — {moteur}", numero=plan.entree.numero,
+                               rang=rang, total=len(self.source.plans), moteur=plan.choix)
                 partitions.append(self._sauvegarder_partition(plan))
                 if self._arret.is_set():
-                    raise ErreurSauvegarde("sauvegarde interrompue")
+                    raise ErreurSauvegarde(t("sauvegarde interrompue"))
             taille_requise = table.taille_requise
 
-        self.etape = "finalisation"
+        self.etape = t("finalisation")
         meta = {
             "mode": image.MODE_BRUT if self.source.brut else image.MODE_AUTO,
             "date": time.strftime("%Y-%m-%d %H:%M", time.localtime(self._heure)),
@@ -185,7 +187,7 @@ class Sauvegarde:
             "taille": plan.entree.taille * self.source.secteur,
         }
         if plan.choix.avertissement:
-            self.avertissements.append(f"partition {numero} : {plan.choix.raison}")
+            self.avertissements.append(t("partition {numero} : {raison}", numero=numero, raison=plan.choix.raison))
 
         if moteur == filesystems.AUCUN:
             return decrite
@@ -201,7 +203,7 @@ class Sauvegarde:
         else:
             flux = self.source.flux_partclone(plan, self.journal)
             decrite["programme"] = plan.choix.programme
-        self._compresser(flux, fichier, f"partition {numero}")
+        self._compresser(flux, fichier, t("partition {numero}", numero=numero))
         decrite["fichier"] = fichier
 
         if plan.fstype == "ntfs" and moteur == filesystems.PARTCLONE:
@@ -259,11 +261,14 @@ class Sauvegarde:
         suivi = diffusion.cibles[0]
 
         if fin_lecteur is not None and not fin_lecteur.ok:
-            raise ErreurSauvegarde(f"{quoi} : lecture impossible — {_derniere(fin_lecteur.erreur)}")
+            raise ErreurSauvegarde(t("{quoi} : lecture impossible — {erreur}", quoi=quoi,
+                                     erreur=_derniere(fin_lecteur.erreur)))
         if not fin_compresseur.ok:
-            raise ErreurSauvegarde(f"{quoi} : zstd a échoué — {_derniere(fin_compresseur.erreur)}")
+            raise ErreurSauvegarde(t("{quoi} : zstd a échoué — {erreur}", quoi=quoi,
+                                     erreur=_derniere(fin_compresseur.erreur)))
         if suivi.etat != REUSSIE:
-            raise ErreurSauvegarde(f"{quoi} : écriture de {fichier} — {suivi.motif}")
+            raise ErreurSauvegarde(t("{quoi} : écriture de {fichier} — {erreur}", quoi=quoi, fichier=fichier,
+                                     erreur=suivi.motif))
         self._empreintes[fichier] = diffusion.empreinte_source
         _log.info("%s : %s, %d octets", quoi, fichier, suivi.octets)
 
@@ -288,4 +293,4 @@ class Sauvegarde:
 
 def _derniere(texte: str) -> str:
     lignes = [ligne.strip() for ligne in (texte or "").splitlines() if ligne.strip()]
-    return lignes[-1] if lignes else "sans message"
+    return lignes[-1] if lignes else t("sans message")

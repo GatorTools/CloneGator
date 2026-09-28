@@ -32,9 +32,10 @@ import threading
 import time
 from dataclasses import dataclass, field
 
-from .. import cache, devices, filesystems, layout, sysexec, verify
+from .. import cache, devices, filesystems, layout, sysexec, texte, verify
 from ..devices import Disque
 from ..journal import Journal
+from ..langue import t
 from . import fanout
 from .sources import ErreurSource, Flux, Plan, SourceDisque, SourceImage
 
@@ -111,7 +112,7 @@ class Clonage:
         self.journal = journal
         self.delai_blocage = delai_blocage
 
-        self.etape = "préparation"
+        self.etape = t("préparation")
         self.diffusion: fanout.Diffusion | None = None
         self.table: layout.Table | None = None
         self.plans: list[Plan] = []
@@ -149,10 +150,10 @@ class Clonage:
         except BaseException as erreur:
             if isinstance(erreur, KeyboardInterrupt):
                 self.arreter()
-                motif = "opération interrompue"
+                motif = t("opération interrompue")
             else:
                 _log.exception("erreur interne")
-                motif = f"erreur interne : {erreur!r}"
+                motif = t("erreur interne : {erreur}", erreur=repr(erreur))
             for cible in self.cibles:
                 cible.conclure(INTERROMPUE if self._arret.is_set() else ECHEC, motif)
             raise
@@ -173,13 +174,13 @@ class Clonage:
         except ErreurSource as erreur:
             self._interrompu()  # une vérification coupée par l'opérateur n'est pas une image altérée
             for cible in self.cibles:
-                cible.conclure(ECHEC, f"source : {erreur}")
+                cible.conclure(ECHEC, t("source : {erreur}", erreur=erreur))
             return
         self.table = self.source.table
         self.plans = self.source.plans
         self._interrompu()
 
-        self.etape = "validation des cibles"
+        self.etape = t("validation des cibles")
         self._valider()
         if not self.actives:
             return
@@ -209,7 +210,7 @@ class Clonage:
             for cible in self.actives:
                 if devices.present(cible.disque):
                     continue
-                motif = "disque retiré ou hors ligne pendant la copie"
+                motif = t("disque retiré ou hors ligne pendant la copie")
                 cible.conclure(ECHEC, motif)
                 diffusion = self.diffusion
                 if diffusion is not None:
@@ -220,43 +221,43 @@ class Clonage:
 
     def _copier(self) -> None:
         if self.source.brut:
-            self.etape = "copie intégrale du disque"
+            self.etape = t("copie intégrale du disque")
             self._diffuser(self.source.ouvrir_disque_brut(self.journal),
-                           self.source.taille_requise, "disque entier",
+                           self.source.taille_requise, t("disque entier"),
                            lambda c: c.disque.chemin)
             self._interrompu()
             for cible in self.actives:
                 cible.conclure(REUSSIE)
-            self.etape = "terminé"
+            self.etape = t("terminé")
             return
 
-        self.etape = "tête du disque"
+        self.etape = t("tête du disque")
         tete = self._copier_tete()
         self._interrompu()
 
-        self.etape = "table de partitions"
+        self.etape = t("table de partitions")
         self._ecrire_tables()
         self._interrompu()
 
         for rang, plan in enumerate(self.plans, start=1):
             if not self.actives:
                 return
-            self.etape = (f"partition {plan.entree.numero} ({rang} sur {len(self.plans)})"
-                          f" — {plan.choix}")
+            self.etape = t("partition {numero} ({rang} sur {total}) — {moteur}", numero=plan.entree.numero,
+                           rang=rang, total=len(self.plans), moteur=plan.choix)
             self._copier_partition(plan)
             self._interrompu()
 
-        self.etape = "vérification"
+        self.etape = t("vérification")
         self._verifier(tete)
 
         for cible in self.actives:
             cible.conclure(REUSSIE)
-        self.etape = "terminé"
+        self.etape = t("terminé")
 
     def _interrompu(self) -> None:
         if self._arret.is_set():
             for cible in self.cibles:
-                cible.conclure(INTERROMPUE, f"interrompu pendant : {self.etape}")
+                cible.conclure(INTERROMPUE, t("interrompu pendant : {etape}", etape=self.etape))
             raise _Interruption()
 
     # ------------------------------------------------------------ préalable ---
@@ -268,10 +269,11 @@ class Clonage:
             disque = cible.disque
             motif = ""
             if disque.taille < requis:
-                motif = (f"trop petite : {_go(disque.taille)} pour {_go(requis)} requis")
+                motif = t("trop petite : {taille} pour {requis} requis", taille=texte.taille(disque.taille),
+                          requis=texte.taille(requis))
             elif disque.secteur_logique != self.source.secteur:
-                motif = (f"secteurs de {disque.secteur_logique} octets, "
-                         f"la source en a de {self.source.secteur}")
+                motif = t("secteurs de {cible} octets, la source en a de {source}",
+                          cible=disque.secteur_logique, source=self.source.secteur)
             else:
                 # Les filets de P2 se décident dans devices, et seulement là.
                 motif = (devices.refus_comme_cible(disque, disque.chemin in self.forcer_smart)
@@ -294,7 +296,7 @@ class Clonage:
         octets = self.table.debut_premiere_partition * self.table.secteur
         flux = self.source.ouvrir_tete()
         tete = os.pread(flux.fd, min(octets, 4096), 0)
-        self._diffuser(flux, octets, "tête du disque", lambda c: c.disque.chemin)
+        self._diffuser(flux, octets, t("tête du disque"), lambda c: c.disque.chemin)
         return tete
 
     def _ecrire_tables(self) -> None:
@@ -302,8 +304,8 @@ class Clonage:
         for cible in self.actives:
             resultat = layout.reproduire(self.table, cible.disque.chemin)
             if not resultat.ok:
-                cible.conclure(ECHEC, "écriture de la table impossible : "
-                               + _derniere_ligne(resultat.erreur))
+                cible.conclure(ECHEC, t("écriture de la table impossible : {erreur}",
+                                        erreur=_derniere_ligne(resultat.erreur)))
 
         # Le noyau crée les nouvelles partitions, udev leurs nœuds : attendre
         # qu'ils existent avant de relire chaque cible.
@@ -312,14 +314,14 @@ class Clonage:
         for cible in self.actives:
             relu = devices.decrire(cible.disque.chemin)
             if relu is None:
-                cible.conclure(ECHEC, "cible disparue après l'écriture de la table")
+                cible.conclure(ECHEC, t("cible disparue après l'écriture de la table"))
                 continue
             cible.disque = relu
             cible.partitions = {p.numero: p.chemin for p in relu.partitions}
             manquantes = [n for n in attendus if n not in cible.partitions]
             if manquantes:
-                cible.conclure(ECHEC, "partitions absentes après l'écriture de la table : "
-                               + ", ".join(map(str, manquantes)))
+                cible.conclure(ECHEC, t("partitions absentes après l'écriture de la table : {liste}",
+                                        liste=", ".join(map(str, manquantes))))
 
     # --------------------------------------------------------------- copie ---
 
@@ -328,7 +330,7 @@ class Clonage:
         moteur = plan.choix.moteur
         if plan.choix.avertissement:
             for cible in self.actives:
-                cible.avertissements.append(f"partition {numero} : {plan.choix.raison}")
+                cible.avertissements.append(t("partition {numero} : {raison}", numero=numero, raison=plan.choix.raison))
 
         if moteur == filesystems.AUCUN:
             return
@@ -337,7 +339,7 @@ class Clonage:
         elif moteur == filesystems.BRUT:
             octets = plan.entree.taille * self.table.secteur
             self._diffuser(self.source.flux_brut(plan, self.journal), octets,
-                           f"partition {numero}", lambda c: c.partitions[numero])
+                           t("partition {numero}", numero=numero), lambda c: c.partitions[numero])
         else:
             self._copier_partclone(plan)
 
@@ -362,7 +364,8 @@ class Clonage:
                     erreurs=self.journal.fichier(f"p{numero}_{nom}.err"),
                 ))
             except OSError as erreur:
-                cible.conclure(ECHEC, f"partition {numero} : {programme} impossible à lancer : {erreur}")
+                cible.conclure(ECHEC, t("partition {numero} : {programme} impossible à lancer : {erreur}",
+                                        numero=numero, programme=programme, erreur=erreur))
 
         cibles = [cible for cible in self.actives if cible.nom in ecrivains]
         self._ecrivains = ecrivains
@@ -392,17 +395,18 @@ class Clonage:
             fin_ecrivain = self._attendre(ecrivain)
 
             if suivi.etat == BLOQUEE:
-                cible.conclure(BLOQUEE, f"partition {numero} : {suivi.motif}")
+                cible.conclure(BLOQUEE, t("partition {numero} : {raison}", numero=numero, raison=suivi.motif))
             elif suivi.etat == INTERROMPUE:
-                cible.conclure(INTERROMPUE, f"partition {numero} : copie interrompue")
+                cible.conclure(INTERROMPUE, t("partition {numero} : copie interrompue", numero=numero))
             elif not fin_lecteur.ok or diffusion.motif_source:
-                cible.conclure(ECHEC, f"partition {numero} : lecture de la source impossible — "
-                               + _derniere_ligne(fin_lecteur.erreur or diffusion.motif_source))
+                cible.conclure(ECHEC, t("partition {numero} : lecture de la source impossible — {erreur}",
+                                        numero=numero,
+                                        erreur=_derniere_ligne(fin_lecteur.erreur or diffusion.motif_source)))
             elif not fin_ecrivain.ok:
-                cible.conclure(ECHEC, f"partition {numero} : {programme} a échoué — "
-                               + _derniere_ligne(fin_ecrivain.erreur))
+                cible.conclure(ECHEC, t("partition {numero} : {programme} a échoué — {erreur}", numero=numero,
+                                        programme=programme, erreur=_derniere_ligne(fin_ecrivain.erreur)))
             elif suivi.etat != REUSSIE:
-                cible.conclure(ECHEC, f"partition {numero} : {suivi.motif}")
+                cible.conclure(ECHEC, t("partition {numero} : {raison}", numero=numero, raison=suivi.motif))
 
     def _copier_secours_ntfs(self, plan: Plan) -> None:
         """Le secteur d'amorçage de secours, que partclone ne copie pas
@@ -422,8 +426,8 @@ class Clonage:
                 finally:
                     os.close(fd)
             except OSError as erreur:
-                cible.conclure(ECHEC, f"partition {numero} : secteur d'amorçage de secours "
-                               f"non écrit — {erreur.strerror}")
+                cible.conclure(ECHEC, t("partition {numero} : secteur d'amorçage de secours non écrit — {erreur}",
+                                        numero=numero, erreur=erreur.strerror))
 
     def _recreer_swap(self, plan: Plan) -> None:
         uuid, etiquette = self.source.swap(plan)
@@ -435,8 +439,8 @@ class Clonage:
         for cible in self.actives:
             resultat = sysexec.executer(argv + [cible.partitions[plan.entree.numero]])
             if not resultat.ok:
-                cible.conclure(ECHEC, f"partition {plan.entree.numero} : mkswap a échoué — "
-                               + _derniere_ligne(resultat.erreur))
+                cible.conclure(ECHEC, t("partition {numero} : mkswap a échoué — {erreur}",
+                                        numero=plan.entree.numero, erreur=_derniere_ligne(resultat.erreur)))
 
     def _diffuser(self, flux: Flux, octets: int, quoi: str, chemin_de) -> None:
         """Copie brute de `octets` octets du flux vers le même emplacement de
@@ -450,7 +454,7 @@ class Clonage:
                     fds.append(sysexec.ouvrir(chemin_de(cible), ecriture=True))
                     cibles.append(cible)
                 except OSError as erreur:
-                    cible.conclure(ECHEC, f"{quoi} : ouverture impossible — {erreur.strerror}")
+                    cible.conclure(ECHEC, t("{quoi} : ouverture impossible — {erreur}", quoi=quoi, erreur=erreur.strerror))
 
             diffusion = fanout.Diffusion(
                 flux.fd,
@@ -469,10 +473,10 @@ class Clonage:
             if lecteur:
                 fin = self._attendre(lecteur)
                 if not fin.ok and not diffusion.motif_source:
-                    diffusion.motif_source = ("lecture de la source impossible — "
-                                              + _derniere_ligne(fin.erreur))
+                    diffusion.motif_source = t("lecture de la source impossible — {erreur}",
+                                               erreur=_derniere_ligne(fin.erreur))
             if diffusion.octets_lus < octets and not diffusion.motif_source:
-                diffusion.motif_source = "source plus courte que prévu"
+                diffusion.motif_source = t("source plus courte que prévu")
             for cible, suivi in zip(cibles, diffusion.cibles):
                 if suivi.etat != REUSSIE:
                     cible.conclure(suivi.etat, f"{quoi} : {suivi.motif}")
@@ -507,7 +511,7 @@ class Clonage:
             relu = devices.decrire(cible.disque.chemin) or cible.disque
             problemes = verify.verifier(self.table, tete, relu, fstypes)
             if problemes:
-                cible.conclure(ECHEC, "vérification : " + " ; ".join(problemes))
+                cible.conclure(ECHEC, t("vérification : {problemes}", problemes=" ; ".join(problemes)))
 
 
 class _Interruption(Exception):
@@ -520,16 +524,13 @@ def _essai_ouverture(chemin: str) -> str:
         fd = sysexec.ouvrir(chemin, ecriture=True)
     except OSError as erreur:
         if erreur.errno == errno.EBUSY:
-            return devices.REFUS_SYSTEME
-        return f"ouverture en écriture impossible : {erreur.strerror}"
+            return devices.refus_systeme()
+        return t("ouverture en écriture impossible : {erreur}", erreur=erreur.strerror)
     os.close(fd)
     return ""
 
 
 def _derniere_ligne(texte: str) -> str:
     lignes = [ligne.strip() for ligne in (texte or "").splitlines() if ligne.strip()]
-    return lignes[-1] if lignes else "sans message"
+    return lignes[-1] if lignes else t("sans message")
 
-
-def _go(octets: int) -> str:
-    return f"{octets / 1e9:.1f} Go".replace(".", ",")

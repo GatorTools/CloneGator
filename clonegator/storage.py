@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from . import devices, montage, reseau
 from .config import ConnexionReseau
 from .devices import Disque
+from .langue import t
 
 _log = logging.getLogger("clonegator.storage")
 
@@ -27,7 +28,9 @@ _FAT = frozenset({"vfat", "msdos", "fat"})
 # Systèmes de fichiers sur lesquels CloneGator sait écrire des sauvegardes.
 _ECRIVABLES = frozenset({"ext4", "ext3", "ext2", "exfat", "ntfs", "xfs", "btrfs"})
 
-REFUS_FAT = "système de fichiers FAT : les fichiers d'une sauvegarde dépassent 4 Go"
+
+def refus_fat() -> str:
+    return t("système de fichiers FAT : les fichiers d'une sauvegarde dépassent 4 Go")
 
 
 class ErreurStockage(Exception):
@@ -84,7 +87,7 @@ def candidats() -> list[Stockage]:
 
 def partage(connexion: ConnexionReseau) -> Stockage:
     """Le partage réseau mémorisé : il ne sera monté qu'avec son mot de passe."""
-    return Stockage(nom=f"Partage réseau {connexion.unc}", fstype="cifs", connexion=connexion)
+    return Stockage(nom=t("Partage réseau {unc}", unc=connexion.unc), fstype="cifs", connexion=connexion)
 
 
 def ouvrir(stockage: Stockage, mot_de_passe: str | None = None) -> Stockage:
@@ -139,7 +142,7 @@ def _candidat(disque: Disque) -> Stockage | None:
         if utilisables:
             return max(utilisables, key=lambda s: s.libre)
         refuse = max(montes, key=lambda s: s.libre)
-        refuse.refus = REFUS_FAT
+        refuse.refus = refus_fat()
         return refuse
 
     # Pas monté : la plus grande partition dont on sait écrire le système de
@@ -151,7 +154,7 @@ def _candidat(disque: Disque) -> Stockage | None:
     for partition in partitions:
         if (partition.fstype or "").lower() in _FAT:
             return Stockage(nom, partition.fstype.lower(), disque=disque,
-                            partition=partition.chemin, refus=REFUS_FAT)
+                            partition=partition.chemin, refus=refus_fat())
     return None
 
 
@@ -166,7 +169,7 @@ def _libre(racine: str) -> int | None:
 def _motif_montage(stockage: Stockage, erreur: str) -> str:
     if stockage.fstype == "ntfs":
         # Le pilote refuse d'écrire sur un NTFS que Windows n'a pas libéré.
-        return ("NTFS non démonté proprement : rebrancher le disque sur Windows et "
-                "l'éjecter avant de le retirer")
+        return t("NTFS non démonté proprement : rebrancher le disque sur Windows et "
+                 "l'éjecter avant de le retirer")
     lignes = [ligne.strip() for ligne in erreur.splitlines() if ligne.strip()]
-    return "montage impossible : " + (lignes[-1] if lignes else "sans message")
+    return t("montage impossible : {erreur}", erreur=lignes[-1] if lignes else t("sans message"))

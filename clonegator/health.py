@@ -24,6 +24,7 @@ import time
 from dataclasses import dataclass
 
 from . import sysexec
+from .langue import t
 
 OK = "ok"
 USURE = "usure"
@@ -33,8 +34,12 @@ INCONNU = "inconnu"
 _DUREE_CACHE = 60.0
 
 # Attributs ATA dont une valeur brute non nulle signale des secteurs abîmés.
-_SECTEURS = {5: "secteurs réalloués", 187: "erreurs non corrigées",
-             197: "secteurs en attente", 198: "secteurs illisibles"}
+def _secteurs(ident: int, nombre: int) -> str:
+    return {5: t("{n} secteurs réalloués", n=nombre), 187: t("{n} erreurs non corrigées", n=nombre),
+            197: t("{n} secteurs en attente", n=nombre), 198: t("{n} secteurs illisibles", n=nombre)}[ident]
+
+
+_SECTEURS = (5, 187, 197, 198)
 # Attributs ATA d'usure d'un SSD, en valeur normalisée : 100 = neuf.
 _USURE_SSD = (231, 202, 177, 233)
 
@@ -46,6 +51,13 @@ class Sante:
 
     def __str__(self) -> str:
         return f"SMART : {self.niveau}" + (f" ({self.detail})" if self.detail else "")
+
+
+def resume(sante: Sante) -> str:
+    """« SMART : usure (12 secteurs réalloués) », dans la langue de l'interface."""
+    niveau = {OK: t("ok"), USURE: t("usure"), DEFAILLANT: t("défaillant"), INCONNU: t("inconnu")}
+    texte = t("SMART : {niveau}", niveau=niveau.get(sante.niveau, sante.niveau))
+    return texte + (f" ({sante.detail})" if sante.detail else "")
 
 
 _cache: dict[tuple[str, str], tuple[float, Sante]] = {}
@@ -71,23 +83,23 @@ def resumer(rapport: dict) -> Sante:
     statut = rapport.get("smart_status", {})
     nvme = rapport.get("nvme_smart_health_information_log")
     if statut.get("passed") is False:
-        return Sante(DEFAILLANT, "le disque se déclare en échec")
+        return Sante(DEFAILLANT, t("le disque se déclare en échec"))
     if nvme and nvme.get("critical_warning"):
-        return Sante(DEFAILLANT, "alerte critique NVMe")
+        return Sante(DEFAILLANT, t("alerte critique NVMe"))
 
     signes = []
     for attribut in rapport.get("ata_smart_attributes", {}).get("table", []):
         ident = attribut.get("id")
         brut = attribut.get("raw", {}).get("value", 0)
         if ident in _SECTEURS and brut:
-            signes.append(f"{brut} {_SECTEURS[ident]}")
+            signes.append(_secteurs(ident, brut))
         elif ident in _USURE_SSD and attribut.get("value", 100) <= 20:
-            signes.append(f"{attribut.get('value')} % de vie restante")
+            signes.append(t("{n} % de vie restante", n=attribut.get("value")))
     if nvme:
         if nvme.get("percentage_used", 0) >= 80:
-            signes.append(f"{nvme['percentage_used']} % de vie consommée")
+            signes.append(t("{n} % de vie consommée", n=nvme["percentage_used"]))
         if nvme.get("media_errors"):
-            signes.append(f"{nvme['media_errors']} erreurs de support")
+            signes.append(t("{n} erreurs de support", n=nvme["media_errors"]))
 
     if signes:
         return Sante(USURE, ", ".join(signes))

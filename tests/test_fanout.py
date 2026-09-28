@@ -24,6 +24,10 @@ import unittest
 from clonegator.engine import fanout
 from clonegator.engine.fanout import Destination, Diffusion
 
+from clonegator import langue
+
+langue.choisir(langue.FRANCAIS)  # les motifs attendus sont écrits en français
+
 Mio = fanout.Mio
 VOLUME = int(os.environ.get("CLONEGATOR_VOLUME_ESSAI", "64")) * Mio
 

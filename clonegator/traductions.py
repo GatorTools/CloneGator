@@ -1,0 +1,329 @@
+"""Le catalogue anglais de l'interface : texte français → texte anglais.
+
+Les champs entre accolades ({requis}, {n}…) se retrouvent tels quels dans la
+traduction. Le test `tests.test_traductions` vérifie que chaque `t()` du code a
+son entrée ici, avec les mêmes champs.
+"""
+
+ANGLAIS: dict[str, str] = {
+    # ------------------------------------------------------------- lancement
+    "CloneGator doit être lancé en root :  sudo clonegator": "CloneGator must be run as root:  sudo clonegator",
+    "CloneGator est déjà ouvert sur un autre écran de cette machine.":
+        "CloneGator is already open on another screen of this machine.",
+
+    # ------------------------------------------------------ langue et clavier
+    "Langue": "Language",
+    "Clavier": "Keyboard",
+    "Changer de langue": "Change language",
+    "Changer de clavier": "Change keyboard",
+    "Anglais (États-Unis)": "English (US)",
+    "Français (Canada)": "French (Canada)",
+    "Canadien multilingue": "Canadian Multilingual",
+
+    # ---------------------------------------------------------------- touches
+    "Choisir": "Select",
+    "Entrée": "Enter",
+    "Valider": "Confirm",
+    "Échap": "Esc",
+    "Retour": "Back",
+    "Se déplacer": "Move",
+    "Espace": "Space",
+    "Cocher": "Check",
+    "Cocher ou continuer": "Check or continue",
+    "Champ suivant, puis valider": "Next field, then confirm",
+    "Faire défiler": "Scroll",
+    "Revenir": "Back",
+    "Copie intégrale": "Full copy",
+    "Annuler": "Cancel",
+    "Interrompre": "Stop",
+    "Forcer un disque SMART défaillant": "Allow a failing disk (SMART)",
+
+    # ---------------------------------------------------------------- accueil
+    "Mode libre": "Free mode",
+    "Mode station": "Station mode",
+    "Que voulez-vous faire ?": "What do you want to do?",
+    "Sauvegarder": "Back up",
+    "Restaurer": "Restore",
+    "Cloner": "Clone",
+    "Journaux": "Logs",
+    "Quitter": "Quit",
+    "Enregistrer un disque dans une sauvegarde": "Save a disk to a backup",
+    "Écrire une sauvegarde sur un ou plusieurs disques": "Write a backup to one or more disks",
+    "Copier un disque vers un ou plusieurs disques": "Copy a disk to one or more disks",
+    "Le même réglage à chaque fois, pour une machine à baies": "Same setup every time, for a multi-bay machine",
+    "Les dernières opérations": "Past operations",
+    "Quitter CloneGator ?": "Quit CloneGator?",
+    "Éteindre": "Shut down",
+    "Redémarrer": "Restart",
+    "Ouvrir une console": "Open a console",
+    "Un shell root, pour dépanner ; « clonegator » pour revenir":
+        "A root shell, for troubleshooting; type “clonegator” to come back",
+    "Revenir à l'accueil": "Back to the home screen",
+
+    # ------------------------------------------------------- fil des étapes
+    "Source": "Source",
+    "Cibles": "Targets",
+    "Confirmation": "Confirm",
+    "Disque": "Disk",
+    "Emplacement": "Location",
+    "Nom": "Name",
+    "Sauvegarde": "Backup",
+    "Démarrage": "Startup",
+
+    # ------------------------------------------------------------ questions
+    "Quel disque voulez-vous copier ?": "Which disk do you want to copy?",
+    "Quel disque voulez-vous sauvegarder ?": "Which disk do you want to back up?",
+    "Vers quels disques ?": "To which disks?",
+    "Où voulez-vous ranger la sauvegarde ?": "Where do you want to store the backup?",
+    "Où sont les sauvegardes ?": "Where are the backups?",
+    "Quelle sauvegarde voulez-vous restaurer ?": "Which backup do you want to restore?",
+    "Quel nom voulez-vous donner à la sauvegarde ?": "What name do you want to give the backup?",
+    "À quel partage réseau voulez-vous vous connecter ?": "Which network share do you want to connect to?",
+    "Quelle opération voulez-vous relire ?": "Which operation do you want to review?",
+    "Tout est prêt. Vérifiez avant de lancer.": "Everything is ready. Check before you start.",
+
+    # ------------------------------------------------------------ disques
+    "Aucun disque détecté.": "No disk detected.",
+    "Tout le contenu des disques cochés sera effacé.": "Everything on the checked disks will be erased.",
+    "trop petit : {requis} requis": "too small: {requis} required",
+    "Continuer avec {n} disque(s)": "Continue with {n} disk(s)",
+    "Continuer ({n} coché(s))": "Continue ({n} checked)",
+    "Cochez au moins un élément avant de continuer.": "Check at least one item before continuing.",
+    "SMART défaillant, choisi quand même": "SMART failing, selected anyway",
+    "Disques déclarés défaillants par SMART : choisissables, à vos risques.":
+        "Disks reported as failing by SMART: selectable, at your own risk.",
+    "vierge ou sans table de partitions": "blank or no partition table",
+    "table inconnue": "unknown table",
+    "{n} partitions": "{n} partitions",
+    "{n} partition": "{n} partition",
+    "numéros {liste}": "numbers {liste}",
+    "{taille} utilisés": "{taille} used",
+    "utilisé par le système": "in use by the system",
+    "contient des sauvegardes CloneGator": "contains CloneGator backups",
+    "SMART : défaillant, le disque se déclare lui-même en fin de vie":
+        "SMART: failing, the disk reports its own end of life",
+    "secteurs de {cible} octets, la source en a de {source}":
+        "{cible}-byte sectors, the source has {source}-byte sectors",
+
+    # ------------------------------------------------------------ stockage
+    "{taille} libres": "{taille} free",
+    "sera monté": "will be mounted",
+    "Partage réseau {unc}": "Network share {unc}",
+    "Partage réseau Windows…": "Windows network share…",
+    "mot de passe demandé": "password required",
+    "Hôte": "Host",
+    "Partage": "Share",
+    "Utilisateur": "User",
+    "Mot de passe": "Password",
+    "Partage Windows : \\\\hôte\\partage. Le mot de passe n'est jamais enregistré.":
+        "Windows share: \\\\host\\share. The password is never saved.",
+    "Connexion à {unc}…": "Connecting to {unc}…",
+    "Aucune sauvegarde sur {stockage}.": "No backup on {stockage}.",
+    "{modele}, {taille} — sauvegarde de {poids}": "{modele}, {taille} — backup of {poids}",
+    "  (copie intégrale)": "  (full copy)",
+    "Pour la reconnaître dans la liste de restauration, par exemple Win11-labo-info.":
+        "To recognize it in the restore list, for example Win11-lab-info.",
+    "Donnez un nom à la sauvegarde.": "Give the backup a name.",
+    "système de fichiers FAT : les fichiers d'une sauvegarde dépassent 4 Go":
+        "FAT file system: backup files are larger than 4 GB",
+    "montage impossible : {erreur}": "cannot mount: {erreur}",
+    "sans message": "no message",
+    "NTFS non démonté proprement : rebrancher le disque sur Windows et l'éjecter avant de le retirer":
+        "NTFS not cleanly unmounted: plug the disk into Windows and eject it before unplugging",
+    "hôte ou partage non renseigné": "host or share missing",
+    "{hote} ne répond pas": "{hote} is not responding",
+    "identifiants refusés par {hote}": "credentials rejected by {hote}",
+    "partage « {partage} » introuvable sur {hote}": "share “{partage}” not found on {hote}",
+    "{hote} injoignable": "{hote} unreachable",
+    "montage du partage impossible": "cannot mount the share",
+
+    # -------------------------------------------------------- confirmation
+    "Effacés — tout leur contenu sera perdu :": "Erased — everything on them will be lost:",
+    "Vers": "To",
+    "{stockage}, {taille} libres": "{stockage}, {taille} free",
+    "{nom}, du {date}, d'un {modele}": "{nom}, from {date}, of a {modele}",
+    "sur {stockage}": "on {stockage}",
+    "La sauvegarde ({taille}) est d'abord vérifiée, puis copiée : environ {duree} en tout.":
+        "The backup ({taille}) is verified first, then copied: about {duree} in all.",
+    "À copier": "To copy",
+    "{taille}, environ {duree}": "{taille}, about {duree}",
+    "tout le disque, secteur par secteur : {taille}, environ {duree}. C'est lent.":
+        "the whole disk, sector by sector: {taille}, about {duree}. This is slow.",
+    "Partition {numero} : {raison} — {taille}, environ {duree} à elle seule":
+        "Partition {numero}: {raison} — {taille}, about {duree} on its own",
+    "Espace libre inférieur au volume à lire : la compression le réduit souvent assez, sans garantie.":
+        "Free space is below the amount to read: compression often makes it fit, with no guarantee.",
+    "Lancer le clonage vers {n} disque(s)": "Start cloning to {n} disk(s)",
+    "Lancer la sauvegarde": "Start the backup",
+    "Lancer la restauration vers {n} disque(s)": "Start restoring to {n} disk(s)",
+
+    # ---------------------------------------------------------- progression
+    "{operation} en cours": "{operation} in progress",
+    "Clonage": "Cloning",
+    "Restauration": "Restore",
+    "Étape": "Step",
+    "Lu": "Read",
+    "Écrit": "Written",
+    "Écoulé": "Elapsed",
+    "Débit": "Speed",
+    "{lu} sur {total} ({part} %)": "{lu} of {total} ({part}%)",
+    " — reste environ {duree}": " — about {duree} left",
+    "{taille} compressés": "{taille} compressed",
+    "en attente": "waiting",
+    "en cours": "in progress",
+    "Interrompre l'opération ?": "Stop the operation?",
+    "Les disques en cours d'écriture seront déclarés invalides.":
+        "Disks being written will be marked as invalid.",
+    "Continuer l'opération": "Continue the operation",
+    "Interruption demandée… arrêt en cours.": "Stop requested… stopping.",
+
+    # --------------------------------------------------------------- rapport
+    "{operation} — rapport": "{operation} — report",
+    "Sauvegarde — rapport": "Backup — report",
+    "{operation} du {date} — {n} réussie(s) sur {total}": "{operation} of {date} — {n} of {total} succeeded",
+    "Sauvegarde du {date} — {etat}": "Backup of {date} — {etat}",
+    "Durée totale": "Total time",
+    "Journal": "Log",
+    "Dossier": "Folder",
+    "Motif": "Reason",
+    "RÉUSSIE": "SUCCEEDED",
+    "ÉCHEC": "FAILED",
+    "BLOQUÉE": "STALLED",
+    "INTERROMPUE": "STOPPED",
+    "ÉCARTÉE": "SKIPPED",
+    "Le dossier reste incomplet : il ne sera jamais proposé à la restauration.":
+        "The folder stays incomplete: it will never be offered for restore.",
+
+    # -------------------------------------------------------------- journaux
+    "Aucune opération enregistrée.": "No operation recorded.",
+    "Pas de rapport pour cette opération.": "No report for this operation.",
+    "Journal : {dossier}": "Log: {dossier}",
+
+    # ---------------------------------------------------------- mode station
+    "Changez les disques, puis choisissez une opération.": "Swap the disks, then choose an operation.",
+    "SOURCE": "SOURCE",
+    "CIBLE": "TARGET",
+    "SAUVEGARDES": "BACKUPS",
+    "(vide)": "(empty)",
+    "prêt": "ready",
+    "prêt, {sante}": "ready, {sante}",
+    "trop petit ({requis} requis)": "too small ({requis} required)",
+    "Cloner la source vers les cibles": "Clone the source to the targets",
+    "Restaurer une sauvegarde vers les cibles": "Restore a backup to the targets",
+    "Sauvegarder la source": "Back up the source",
+    "Quitter le mode station": "Leave station mode",
+    "Aucun disque dans l'emplacement source.": "No disk in the source location.",
+    "Aucune cible prête.": "No target ready.",
+    "Sélectionnez l'emplacement source.": "Select the source location.",
+    "Sélectionnez les emplacements cibles.": "Select the target locations.",
+    "Leur contenu sera effacé à chaque clonage.": "Their content will be erased at every clone.",
+    "Continuer avec {n} emplacement(s)": "Continue with {n} location(s)",
+    "Voulez-vous que CloneGator démarre automatiquement en mode station au démarrage de cet ordinateur ?":
+        "Do you want CloneGator to start automatically in station mode when this computer starts?",
+    "Oui": "Yes",
+    "Non": "No",
+    "La machine démarre directement sur le mode station": "The machine starts straight into station mode",
+    "On lance CloneGator soi-même": "You start CloneGator yourself",
+    "Lancement automatique": "Automatic start",
+    "Le mode station est activé, mais pas son lancement automatique :":
+        "Station mode is on, but not its automatic start:",
+    "unité systemd non écrite : {erreur}": "systemd unit not written: {erreur}",
+    "{commande} a échoué : {erreur}": "{commande} failed: {erreur}",
+
+    # ------------------------------------------------------------------ SMART
+    "SMART : {niveau}": "SMART: {niveau}",
+    "ok": "ok",
+    "usure": "wear",
+    "défaillant": "failing",
+    "inconnu": "unknown",
+    "{n} secteurs réalloués": "{n} reallocated sectors",
+    "{n} erreurs non corrigées": "{n} uncorrected errors",
+    "{n} secteurs en attente": "{n} pending sectors",
+    "{n} secteurs illisibles": "{n} unreadable sectors",
+    "le disque se déclare en échec": "the disk reports itself as failed",
+    "alerte critique NVMe": "NVMe critical warning",
+    "{n} % de vie consommée": "{n}% of life used",
+    "{n} erreurs de support": "{n} media errors",
+    "{n} % de vie restante": "{n}% of life left",
+
+    # ----------------------------------------------------- systèmes de fichiers
+    "aucun système de fichiers reconnu": "no file system recognized",
+    "« {fstype} » non pris en charge par partclone": "“{fstype}” not supported by partclone",
+    "partition étendue, décrite par la table": "extended partition, described by the table",
+    "{motif} : copie intégrale": "{motif}: full copy",
+    "NTFS endommagé": "damaged NTFS",
+    "NTFS hiberné (Windows mis en veille prolongée ou démarrage rapide)":
+        "hibernated NTFS (Windows hibernation or Fast Startup)",
+    "NTFS non démonté proprement": "NTFS not cleanly unmounted",
+    "NTFS illisible (ntfs-3g.probe : code {code})": "unreadable NTFS (ntfs-3g.probe: code {code})",
+    "{fstype} dans l'état « {etat} »": "{fstype} in state “{etat}”",
+    "{fstype} illisible (dumpe2fs)": "unreadable {fstype} (dumpe2fs)",
+
+    # -------------------------------------------------- étapes de l'opération
+    "préparation": "preparing",
+    "protection de la source en lecture seule": "making the source read-only",
+    "lecture de la sauvegarde": "reading the backup",
+    "vérification de la sauvegarde (relecture de {taille})": "verifying the backup (reading {taille} again)",
+    "validation des cibles": "checking the targets",
+    "tête du disque": "disk header",
+    "tête du disque et table": "disk header and table",
+    "table de partitions": "partition table",
+    "partition {numero} ({rang} sur {total}) — {moteur}": "partition {numero} ({rang} of {total}) — {moteur}",
+    "copie intégrale du disque": "full disk copy",
+    "disque entier": "whole disk",
+    "partition {numero}": "partition {numero}",
+    "vérification": "verification",
+    "finalisation": "finishing",
+    "terminé": "done",
+
+    # ------------------------------------------------------ motifs d'échec
+    "opération interrompue": "operation stopped",
+    "sauvegarde interrompue": "backup stopped",
+    "erreur interne : {erreur}": "internal error: {erreur}",
+    "source : {erreur}": "source: {erreur}",
+    "interrompu pendant : {etape}": "stopped during: {etape}",
+    "disque retiré ou hors ligne pendant la copie": "disk removed or offline during the copy",
+    "trop petite : {taille} pour {requis} requis": "too small: {taille} for {requis} required",
+    "ouverture en écriture impossible : {erreur}": "cannot open for writing: {erreur}",
+    "écriture de la table impossible : {erreur}": "cannot write the partition table: {erreur}",
+    "cible disparue après l'écriture de la table": "target vanished after the partition table was written",
+    "partitions absentes après l'écriture de la table : {liste}":
+        "partitions missing after the partition table was written: {liste}",
+    "partition {numero} : {raison}": "partition {numero}: {raison}",
+    "partition {numero} : {programme} impossible à lancer : {erreur}":
+        "partition {numero}: cannot start {programme}: {erreur}",
+    "partition {numero} : copie interrompue": "partition {numero}: copy stopped",
+    "partition {numero} : lecture de la source impossible — {erreur}":
+        "partition {numero}: cannot read the source — {erreur}",
+    "partition {numero} : {programme} a échoué — {erreur}": "partition {numero}: {programme} failed — {erreur}",
+    "partition {numero} : secteur d'amorçage de secours non écrit — {erreur}":
+        "partition {numero}: backup boot sector not written — {erreur}",
+    "partition {numero} : mkswap a échoué — {erreur}": "partition {numero}: mkswap failed — {erreur}",
+    "{quoi} : ouverture impossible — {erreur}": "{quoi}: cannot open — {erreur}",
+    "{quoi} : lecture impossible — {erreur}": "{quoi}: cannot read — {erreur}",
+    "{quoi} : zstd a échoué — {erreur}": "{quoi}: zstd failed — {erreur}",
+    "{quoi} : écriture de {fichier} — {erreur}": "{quoi}: writing {fichier} — {erreur}",
+    "lecture de la source impossible — {erreur}": "cannot read the source — {erreur}",
+    "lecture de la source impossible : {erreur}": "cannot read the source: {erreur}",
+    "source plus courte que prévu": "source shorter than expected",
+    "vérification : {problemes}": "verification: {problemes}",
+    "écriture impossible : {erreur}": "cannot write: {erreur}",
+    "le programme destinataire s'est arrêté": "the receiving program stopped",
+    "diffusion interrompue": "copy stopped",
+    "fil d'écriture arrêté sans verdict": "writer thread stopped without a verdict",
+    "synchronisation finale sans fin depuis {n} s": "final sync not finishing for {n} s",
+    "aucune écriture depuis {n} s": "nothing written for {n} s",
+    "diffusion abandonnée : {erreur}": "copy abandoned: {erreur}",
+    "le disque source n'a pas pu être mis en lecture seule": "the source disk could not be made read-only",
+    "la partition {numero} de la source n'est pas visible par le système":
+        "source partition {numero} is not visible to the system",
+    "table de l'image illisible : {erreur}": "unreadable backup partition table: {erreur}",
+    "la partition {numero} manque dans {fichier}": "partition {numero} is missing from {fichier}",
+    "sauvegarde « {nom} » du {date}, d'un {modele} s/n {serie}":
+        "backup “{nom}” from {date}, of a {modele} s/n {serie}",
+    "image altérée — {defauts}": "damaged backup — {defauts}",
+    "vérification impossible": "cannot verify",
+    "code d'amorçage différent de la source": "boot code differs from the source",
+    "tête du disque illisible : {erreur}": "unreadable disk header: {erreur}",
+    "partition {numero} ({fstype}) refusée par {programme}": "partition {numero} ({fstype}) rejected by {programme}",
+}

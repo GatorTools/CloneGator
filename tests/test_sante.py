@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import unittest
 
-from clonegator import health
+from clonegator import health, langue
+
+langue.choisir(langue.FRANCAIS)  # les détails attendus sont écrits en français
 
 
 def ata(passed=True, **attributs):
