@@ -21,6 +21,7 @@ import curses
 import time
 
 from .. import VERSION, clavier, langue
+from . import logo
 from ..langue import t
 from .model import (
     AVERTISSEMENT, CURSEUR, DETAIL, ECHEC, FORT, GRISE, NORMAL, OK, POINT, RETOUR, VALIDER,
@@ -62,6 +63,8 @@ _BARRE = "barre"
 _BARRE_TOUCHE = "barre_touche"
 _SAISIE = "saisie"
 _CADRE = "cadre"
+_LOGO_VERT = "logo_vert"
+_LOGO_BLANC = "logo_blanc"
 
 
 class Ecran:
@@ -95,6 +98,8 @@ class Ecran:
             _BARRE_TOUCHE: curses.A_REVERSE | curses.A_BOLD,
             _SAISIE: curses.A_REVERSE,
             _CADRE: curses.A_BOLD,
+            _LOGO_VERT: curses.A_NORMAL,
+            _LOGO_BLANC: curses.A_BOLD,
         }
         if not curses.has_colors():
             return styles
@@ -122,6 +127,9 @@ class Ecran:
             _BARRE_TOUCHE: (curses.COLOR_WHITE, curses.COLOR_GREEN, curses.A_BOLD),
             _SAISIE: (curses.COLOR_BLACK, curses.COLOR_WHITE, 0),
             _CADRE: (curses.COLOR_GREEN, fond, curses.A_BOLD),
+            # Le vert normal, sans gras : le plus proche du vert de la marque.
+            _LOGO_VERT: (curses.COLOR_GREEN, fond, 0),
+            _LOGO_BLANC: (curses.COLOR_WHITE, fond, curses.A_BOLD),
         }
         for numero, (style, (avant, arriere, attribut)) in enumerate(paires.items(), start=1):
             curses.init_pair(numero, avant, arriere)
@@ -296,6 +304,45 @@ class Ecran:
             fenetre.addstr(y, x, texte, attribut)
         except curses.error:
             pass  # la dernière case de l'écran refuse l'écriture : sans conséquence
+
+    # ------------------------------------------------------- écran d'accueil ---
+
+    def presenter(self, textes: list[tuple[str, str]], duree: float = 2.0) -> None:
+        """L'écran d'accueil : le logo GatorTools en blocs de couleur, à la plus
+        grande taille qui tient, et quelques lignes centrées dessous. Il reste
+        `duree` secondes ; n'importe quelle touche le passe."""
+        fin = time.monotonic() + duree
+        while True:
+            self._dessiner_accueil(textes)
+            reste = fin - time.monotonic()
+            if reste <= 0:
+                return
+            self.fenetre.timeout(int(reste * 1000))
+            try:
+                touche = self.fenetre.get_wch()
+            except curses.error:
+                return  # le temps est écoulé
+            if touche != curses.KEY_RESIZE:
+                return
+
+    def _dessiner_accueil(self, textes: list[tuple[str, str]]) -> None:
+        self.fenetre.erase()
+        hauteur, largeur = self.fenetre.getmaxyx()
+        espace = len(textes) + 3  # le texte, et deux lignes vides au-dessus
+        dessin = logo.reduire(largeur - 4, hauteur - espace - 2) or []
+        haut = max(0, (hauteur - len(dessin) - espace) // 2)
+        for i, ligne in enumerate(dessin):
+            gauche = (largeur - len(ligne)) // 2
+            for j, case in enumerate(ligne):
+                if case != " ":
+                    style = _LOGO_VERT if case == logo.VERT else _LOGO_BLANC
+                    self._ecrire_dans(self.fenetre, haut + i, gauche + j, "█", self._styles[style])
+        y = haut + len(dessin) + (2 if dessin else 0)
+        for texte, style in textes:
+            self._ecrire_dans(self.fenetre, y, max(0, (largeur - len(texte)) // 2), texte[: largeur - 1],
+                              self._styles.get(style, curses.A_NORMAL))
+            y += 1
+        self.fenetre.refresh()
 
     # ------------------------------------------------------------ interactions ---
 

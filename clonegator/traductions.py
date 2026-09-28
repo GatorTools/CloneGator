@@ -11,6 +11,10 @@ ANGLAIS: dict[str, str] = {
     "CloneGator est déjà ouvert sur un autre écran de cette machine.":
         "CloneGator is already open on another screen of this machine.",
 
+    # --------------------------------------------------------- écran d'accueil
+    "Cloner, sauvegarder et restaurer des disques": "Clone, back up and restore disks",
+    "Un projet GatorTools": "A GatorTools project",
+
     # ------------------------------------------------------ langue et clavier
     "Langue": "Language",
     "Clavier": "Keyboard",

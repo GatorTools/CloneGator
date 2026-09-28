@@ -20,7 +20,7 @@ import re
 import threading
 import time
 
-from .. import clavier, config, demarrage, devices, filesystems, health, image, journal, langue, layout
+from .. import VERSION, clavier, config, demarrage, devices, filesystems, health, image, journal, langue, layout
 from .. import storage, sysexec, texte
 from ..engine import backup, clone, fanout, sources
 from ..journal import Journal
@@ -129,6 +129,11 @@ class Application:
         if self.ecran.console_physique:
             # Le clavier mémorisé, ou l'anglais (États-Unis) par défaut (§9.8).
             clavier.appliquer(self.reglages.clavier)
+        self.ecran.presenter([
+            (f"CloneGator  {VERSION}", FORT),
+            (t("Cloner, sauvegarder et restaurer des disques"), NORMAL),
+            (t("Un projet GatorTools"), OK),
+        ])
         try:
             if self.reglages.mode == config.MODE_STATION and self.reglages.station:
                 if not self.station():
