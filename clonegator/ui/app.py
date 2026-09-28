@@ -1095,6 +1095,11 @@ def demarrer() -> int:
     finally:
         if niveau is not None:
             sysexec.ecrire("/proc/sys/kernel/printk", niveau)
+        if console:
+            # La console n'a pas d'écran secondaire : sans ceci, le dernier
+            # écran de CloneGator resterait affiché sous l'invite. Par SSH, le
+            # terminal rend de lui-même ce qu'il montrait avant.
+            print("\033[H\033[2J", end="", flush=True)
         tenu.close()
     return 0
 
