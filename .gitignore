@@ -9,3 +9,6 @@ __pycache__/
 
 # Paquets construits
 dist/
+
+# Réglages locaux de Claude Code, propres à la station
+.claude/
