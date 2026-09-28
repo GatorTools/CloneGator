@@ -2,7 +2,7 @@
 # En le quittant pour la console, l'invite root prend le relais sur tty1.
 [Unit]
 Description=CloneGator, sur la console du live
-After=systemd-user-sessions.service clonegator-clavier.service console-setup.service
+After=systemd-user-sessions.service console-setup.service
 Conflicts=getty@tty1.service
 
 [Service]

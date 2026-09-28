@@ -56,7 +56,7 @@ mmdebstrap --mode=root --variant=apt --components="main non-free-firmware" \
     --customize-hook='chroot "$1" env DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends /tmp/clonegator.deb' \
     --customize-hook='rm "$1/tmp/clonegator.deb"' \
     --customize-hook="sync-in live/systeme /" \
-    --customize-hook='chroot "$1" systemctl enable clonegator-live.service clonegator-clavier.service systemd-networkd.service systemd-resolved.service' \
+    --customize-hook='chroot "$1" systemctl enable clonegator-live.service systemd-networkd.service systemd-resolved.service' \
     --customize-hook='chroot "$1" systemctl disable getty@tty1.service' \
     --customize-hook='chroot "$1" passwd --delete root' \
     --customize-hook='mkdir -p "$1/etc/network"' \
