@@ -18,6 +18,7 @@ toujours écrit en toutes lettres.
 from __future__ import annotations
 
 import curses
+import threading
 import time
 
 from .. import VERSION, clavier, langue
@@ -51,6 +52,11 @@ RECONSTRUIRE = "reconstruire"
 # quelqu'un d'autre y aurait écrit disparaît.
 _REDESSIN_COMPLET = 10.0
 
+# L'indicateur d'attente ne paraît qu'au-delà de ce délai : une étape rapide
+# ne fait pas clignoter l'écran.
+_ATTENTE_SANS_INDICATEUR = 0.15
+_TOURNIQUET = "|/-\\"
+
 # Le contenu tient dans une colonne centrée : sur un grand écran, il ne reste
 # pas collé au bord gauche.
 MARGE = 2
@@ -76,6 +82,7 @@ class Ecran:
         self.changer_clavier = lambda code: None
         self.clavier_actuel = clavier.ANGLAIS_US
         self._dernier_redessin = time.monotonic()
+        self._sous_contenu = 0
         self.fenetre.keypad(True)
         try:
             curses.curs_set(0)
@@ -239,6 +246,8 @@ class Ecran:
             debut = choisie - place + 1
         for rang, ligne in enumerate(corps[debut:debut + place]):
             self._ecrire(y + rang, ligne, droite, x=x, surligner=(debut + rang == choisie))
+        # Là où l'œil est déjà : juste sous le contenu, pour l'indicateur d'attente.
+        self._sous_contenu = min(hauteur - 3, y + min(len(corps), place) + 1)
 
         if message:
             self._ecrire(hauteur - 3, Ligne.de(message, style_message), droite, x=x)
@@ -342,6 +351,43 @@ class Ecran:
             self._ecrire_dans(self.fenetre, y, max(0, (largeur - len(texte)) // 2), texte[: largeur - 1],
                               self._styles.get(style, curses.A_NORMAL))
             y += 1
+        self.fenetre.refresh()
+
+    # ---------------------------------------------------------------- attente ---
+
+    def patienter(self, message: str, fonction, *arguments):
+        """Fait `fonction(*arguments)` en arrière-plan et rend son résultat.
+        Si elle dure plus d'un instant, un indicateur qui tourne et `message`
+        s'affichent en bas de l'écran : l'opérateur voit que sa touche a été
+        prise en compte et que le logiciel travaille. Les touches tapées
+        pendant l'attente sont oubliées, pour ne pas agir sur l'écran suivant."""
+        resultat = {}
+
+        def travail():
+            try:
+                resultat["valeur"] = fonction(*arguments)
+            except BaseException as erreur:  # rendue à l'appelant, dans son fil
+                resultat["erreur"] = erreur
+
+        fil = threading.Thread(target=travail, name="attente", daemon=True)
+        fil.start()
+        fil.join(_ATTENTE_SANS_INDICATEUR)
+        tour = 0
+        while fil.is_alive():
+            self._indicateur(f"{_TOURNIQUET[tour % len(_TOURNIQUET)]}  {message}")
+            tour += 1
+            fil.join(0.12)
+        curses.flushinp()
+        if "erreur" in resultat:
+            raise resultat["erreur"]
+        return resultat.get("valeur")
+
+    def _indicateur(self, texte: str) -> None:
+        hauteur, largeur = self.fenetre.getmaxyx()
+        x = max(MARGE, (largeur - LARGEUR_CONTENU) // 2)
+        y = self._sous_contenu or hauteur - 3
+        self._ecrire_dans(self.fenetre, y, 0, " " * (largeur - 1), curses.A_NORMAL)
+        self._ecrire_dans(self.fenetre, y, x, texte[: largeur - 1 - x], self._styles[FORT])
         self.fenetre.refresh()
 
     # ------------------------------------------------------------ interactions ---

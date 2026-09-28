@@ -208,10 +208,10 @@ class Application:
                 cibles = self._choisir_cibles(_etapes_cloner, 1, source=source, precedentes=cibles)
                 etape = 2 if cibles else 0
             else:
-                plan = _plan_disque(source)
+                plan = self._attendre(t("Analyse du disque source…"), _plan_disque, source)
                 decision = self._confirmer_clonage(source, cibles, plan)
                 while decision == "brut":
-                    plan = _plan_disque(source, brut=not plan.brut)
+                    plan = self._attendre(t("Analyse du disque source…"), _plan_disque, source, not plan.brut)
                     decision = self._confirmer_clonage(source, cibles, plan)
                 if decision != "lancer":
                     if impose:
@@ -250,10 +250,11 @@ class Application:
                     nom = self._saisir_nom(source, nom)
                     etape = 1 if nom is None else 3
                 else:
-                    plan = _plan_disque(source)
+                    plan = self._attendre(t("Analyse du disque source…"), _plan_disque, source)
                     decision = self._confirmer_sauvegarde(source, stockage, nom, plan)
                     while decision == "brut":
-                        plan = _plan_disque(source, brut=not plan.brut)
+                        plan = self._attendre(t("Analyse du disque source…"), _plan_disque, source,
+                                              not plan.brut)
                         decision = self._confirmer_sauvegarde(source, stockage, nom, plan)
                     if decision != "lancer":
                         etape = 2
@@ -301,7 +302,8 @@ class Application:
         le mode station est activé."""
         precedent = self.reglages.station
         emplacements = _emplacements_internes()
-        presents = {d.emplacement.cle: d for d in devices.inventaire() if d.emplacement}
+        presents = self._attendre(t("Lecture des disques…"), lambda: {
+            d.emplacement.cle: d for d in devices.inventaire() if d.emplacement})
 
         def element(e: devices.Emplacement) -> Element:
             disque = presents.get(e.cle)
@@ -377,6 +379,10 @@ class Application:
     def station(self) -> bool:
         """L'accueil du mode station (§9.4). Rend False pour quitter CloneGator,
         True pour revenir à l'accueil du mode libre."""
+        # Le tableau des baies se rafraîchit tout seul ; les vérifications
+        # lentes (sauvegardes présentes, SMART), faites ici une première fois,
+        # sont ensuite gardées en mémoire.
+        self._attendre(t("Vérification des disques…"), _verifier_cibles, devices.inventaire())
         while True:
             choix = self.ecran.choisir(self._accueil_station, intervalle=2.0)
             reglage = self.reglages.station
@@ -512,7 +518,7 @@ class Application:
     # --------------------------------------------------------------- étapes ---
 
     def _choisir_source(self, etapes, titre: str) -> devices.Disque | None:
-        disques = devices.inventaire()
+        disques = self._attendre(t("Lecture des disques…"), devices.inventaire)
         if not disques:
             self._message(titre, [Ligne.de(t("Aucun disque détecté."), AVERTISSEMENT)])
             return None
@@ -531,11 +537,16 @@ class Application:
 
     def _choisir_cibles(self, etapes, etape: int, source: devices.Disque | None = None,
                         image=None, precedentes=None) -> list[devices.Disque] | None:
-        if source is not None:
-            requis, secteur = _taille_requise(source), source.secteur_logique
-        else:
-            requis, secteur = image.taille_requise, int(image.meta.get("secteur", 512))
-        disques = [d for d in devices.inventaire() if source is None or d.chemin != source.chemin]
+        def preparer():
+            if source is not None:
+                requis, secteur = _taille_requise(source), source.secteur_logique
+            else:
+                requis, secteur = image.taille_requise, int(image.meta.get("secteur", 512))
+            disques = [d for d in devices.inventaire() if source is None or d.chemin != source.chemin]
+            _verifier_cibles(disques)
+            return requis, secteur, disques
+
+        requis, secteur, disques = self._attendre(t("Vérification des disques…"), preparer)
 
         def construire():
             elements = []
@@ -570,7 +581,7 @@ class Application:
     def _choisir_stockage(self, etapes, etape: int, titre: str) -> storage.Stockage | None:
         """§7.4 : un disque USB ou le partage réseau ; l'étape apparaît toujours."""
         while True:
-            candidats = storage.candidats()
+            candidats = self._attendre(t("Recherche des emplacements de sauvegarde…"), storage.candidats)
 
             def construire():
                 elements = []
@@ -596,7 +607,7 @@ class Application:
                     return ouvert
                 continue
             try:
-                return storage.ouvrir(choix)
+                return self._attendre(t("Ouverture de {nom}…", nom=choix.nom), storage.ouvrir, choix)
             except storage.ErreurStockage as erreur:
                 self._message(titre, [Ligne.de(f"{choix.nom} : {erreur}", AVERTISSEMENT)])
 
@@ -626,9 +637,9 @@ class Application:
                                            valeurs["partage"].strip().strip("\\/"),
                                            valeurs["utilisateur"].strip())
             connexion = essai
-            self.ecran.dessiner(self._page(t("Connexion à {unc}…", unc=essai.unc)), [])
             try:
-                ouvert = storage.ouvrir(storage.partage(essai), valeurs["mot_de_passe"])
+                ouvert = self._attendre(t("Connexion à {unc}…", unc=essai.unc), storage.ouvrir,
+                                        storage.partage(essai), valeurs["mot_de_passe"])
             except storage.ErreurStockage as erreur:
                 saisi["message"] = str(erreur)
                 continue
@@ -640,7 +651,12 @@ class Application:
             return ouvert
 
     def _choisir_sauvegarde(self, stockage: storage.Stockage):
-        sauvegardes = list(reversed(image.lister(stockage.racine)))  # la plus récente en haut
+        def lire():
+            trouvees = list(reversed(image.lister(stockage.racine)))  # la plus récente en haut
+            # Leur poids se lit fichier par fichier, parfois par le réseau : une fois.
+            return trouvees, {img.dossier: img.taille_sur_disque for img in trouvees}
+
+        sauvegardes, poids = self._attendre(t("Lecture des sauvegardes…"), lire)
         if not sauvegardes:
             self._message(t("Restaurer"), [Ligne.de(t("Aucune sauvegarde sur {stockage}.", stockage=stockage.nom),
                                                      AVERTISSEMENT)])
@@ -652,7 +668,7 @@ class Application:
                 detail = t("{modele}, {taille} — sauvegarde de {poids}",
                            modele=img.origine.get("modele", "?"),
                            taille=texte.taille(int(img.origine.get("taille", 0))),
-                           poids=texte.taille(img.taille_sur_disque))
+                           poids=texte.taille(poids[img.dossier]))
                 if img.mode == image.MODE_BRUT:
                     detail += t("  (copie intégrale)")
                 elements.append(Element(f"{img.etiquette:<24} {img.meta.get('date', '?'):<17}", img, detail=detail))
@@ -801,6 +817,10 @@ class Application:
         mode = t("Mode station") if self.reglages.mode == config.MODE_STATION else t("Mode libre")
         return Page(titre, entete or [], touches or [], operation, etapes or [], etape, mode)
 
+    def _attendre(self, message: str, fonction, *arguments):
+        """Une étape lente, avec l'indicateur d'attente de l'écran."""
+        return self.ecran.patienter(message, fonction, *arguments)
+
     def _message(self, titre: str, lignes: list[Ligne]) -> None:
         self.ecran.afficher(lambda: (self._page(titre, touches=[(t("Entrée"), t("Revenir"))]), lignes))
 
@@ -855,6 +875,14 @@ def _plan_disque(disque: devices.Disque, brut: bool | None = None) -> _Plan:
         return _Plan(disque, brut=brut)
     except layout.ErreurTable:
         return _Plan(disque, brut=True)
+
+
+def _verifier_cibles(disques: list[devices.Disque]) -> None:
+    """Fait une première fois les vérifications lentes d'une cible — monter
+    pour chercher des sauvegardes, interroger SMART — ; `devices` et `health`
+    en gardent le résultat, et l'écran se construit ensuite sans attendre."""
+    for disque in disques:
+        devices.refus_comme_cible(disque)
 
 
 def _taille_requise(disque: devices.Disque) -> int:
