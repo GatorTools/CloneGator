@@ -104,8 +104,11 @@
     <h2>Démarrer</h2>
     <ol class="etapes">
       <li>
-        <h3>Installer</h3>
-        <p>Sur Ubuntu 24.04, dans un terminal :</p>
+        <h3>Démarrer sur la clé live, ou installer</h3>
+        <p>Le plus simple : écrivez la <a href="telecharger.html">clé live</a> sur une clé USB et
+        démarrez le PC dessus. CloneGator s'ouvre tout seul, rien à installer, en BIOS comme en
+        UEFI avec Secure Boot.</p>
+        <p>Pour une station de clonage, installez plutôt le paquet, sur Ubuntu 24.04 :</p>
 <pre><code>wget github.com/kevin-belanger/CloneGator/releases/latest/download/clonegator.deb
 sudo apt install ./clonegator.deb</code></pre>
         <p class="doux">apt installe aussi les outils sur lesquels CloneGator s'appuie :
@@ -113,6 +116,7 @@ sudo apt install ./clonegator.deb</code></pre>
       </li>
       <li>
         <h3>Lancer</h3>
+        <p>Sur la clé live, c'est déjà fait. Une fois le paquet installé :</p>
 <pre><code>sudo clonegator</code></pre>
 <figure>
 <div class="terminal" role="img" aria-label="Écran d'accueil de CloneGator"><span class="bande"> CloneGator 0.1.0</span><span class="corps"><b>Accueil</b>

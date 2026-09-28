@@ -66,8 +66,8 @@ fonctions, commentaires, messages de commit. S'y tenir.
 
 ## Où on en est
 
-Phases 1 à 5 terminées : le MVP est livré. Phase 6 en cours : le CloneGator live, qui passe
-ses essais dans QEMU ; restent les vraies machines (plan). `python3 -m clonegator` ouvre l'interface : mode libre
+Phases 1 à 6 terminées : le MVP est livré, et le CloneGator live (ISO) aussi. Prochain
+chantier au backlog : le mode PXE (§17 de l'analyse), qui s'appuie sur le live. `python3 -m clonegator` ouvre l'interface : mode libre
 (sauvegarder, restaurer, cloner), mode station, journaux, partage réseau.
 Reste un essai : un disque réellement usé pour SMART (plan, phase 4). Les
 sous-commandes servent au développement.
@@ -91,7 +91,7 @@ réglages : `/etc/clonegator/clonegator.json`. Un seul CloneGator à la fois
 Phase 5 terminée, MVP livré. `./outils/construire-paquet.sh` construit le
 `.deb` dans `dist/` (dépôt commité exigé). Publier : étiquette
 `v<version>` (`~` → `-`, `+` → `.`), `gh release create --target <commit complet>` (l'abrégé est refusé), et joindre aussi une
-copie nommée `clonegator.deb` pour l'adresse courte
+copie nommée `clonegator.deb`, et une copie de l'ISO nommée `clonegator-live.iso`, pour les adresses courtes
 `github.com/kevin-belanger/CloneGator/releases/latest/download/clonegator.deb`.
 
 ## Site web

@@ -1,6 +1,6 @@
 # CloneGator — Plan de développement
 
-Compagnon de [ANALYSE-FONCTIONNELLE.md](ANALYSE-FONCTIONNELLE.md), révision 1.2.
+Compagnon de [ANALYSE-FONCTIONNELLE.md](ANALYSE-FONCTIONNELLE.md), révision 1.3.
 Les renvois `§n` pointent vers l'analyse.
 
 | Rév. | Date | Auteur | Changement |
@@ -17,6 +17,7 @@ Les renvois `§n` pointent vers l'analyse.
 | 1.0 | 2026-09-25 | Kevin + Claude | Phase 5 terminée : paquet .deb publié en release GitHub, installé et éprouvé sur une machine neuve. MVP livré |
 | 1.1 | 2026-09-25 | Kevin + Claude | Analyse 0.8 : phase 6, le CloneGator live, première étape vers le mode PXE (§17) |
 | 1.2 | 2026-09-25 | Kevin + Claude | Phase 6 : le live se construit et passe ses essais dans QEMU (BIOS, UEFI Secure Boot, clonage, sauvegarde, restauration). Le paquet dépend désormais de `fdisk` |
+| 1.3 | 2026-09-28 | Kevin + Claude | Phase 6 terminée : essai du live sur de vraies machines concluant (Kevin). ISO publiée en release et proposée sur le site |
 
 ---
 
@@ -416,7 +417,7 @@ branchée, et mène une opération entre le partage réseau et un disque USB. Ke
 suffisante : **phase 5 terminée, MVP livré.** Lancé sans root, CloneGator le dit désormais en
 une phrase au lieu d'une trace Python.
 
-### Phase 6 — CloneGator live · taille M
+### Phase 6 — CloneGator live · taille M · **terminée le 2026-09-28**
 
 Dans le même dépôt : le live est construit à partir du paquet, il en suit la version, et il
 peut demander des ajustements au logiciel.
@@ -459,6 +460,10 @@ Enseignements :
 - GRUB en BIOS : son cœur est limité à 480 Ko ; ses modules restent dans l'image intégrée, avec
   leurs dépendances, sans quoi la police des accents ne se charge pas.
 - Le service du clavier ne doit pas attendre `local-fs.target` : cycle avec `keyboard-setup`.
+
+**Recette (Kevin, 2026-09-28)** : l'ISO publiée en release, écrite sur une clé, est essayée sur
+de vraies machines ; Kevin juge l'essai concluant. **Phase 6 terminée.** Les versions sont
+désormais datées à la minute du commit, pour que `apt` accepte deux mises à jour du même jour.
 
 ---
 

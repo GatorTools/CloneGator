@@ -304,7 +304,8 @@ th { font-weight: 700; }
   margin: 24px 0;
 }
 .derniere h2 { margin-bottom: 4px; }
-.derniere .bouton { color: #0a0b0a; }
+.derniere .bouton.plein { color: #0a0b0a; }
+.bouton.contour { color: var(--vert-texte); }
 
 .versions { list-style: none; padding: 0; }
 .versions > li { border-bottom: 1px solid var(--ligne); padding: 20px 0; }

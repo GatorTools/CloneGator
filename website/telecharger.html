@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Télécharger · CloneGator</title>
-  <meta name="description" content="Télécharger CloneGator : dernière version et historique des versions. Paquet .deb pour Debian et Ubuntu.">
+  <meta name="description" content="Télécharger CloneGator : la clé live (ISO) ou le paquet .deb pour Ubuntu, la dernière version et l'historique.">
   <link rel="icon" href="img/icone.png">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -26,8 +26,8 @@
 
   <div class="titre-page">
     <h1>Télécharger</h1>
-    <p class="intro">Un paquet <code>.deb</code> pour Debian et Ubuntu, testé sur
-    Ubuntu 24.04. Gratuit, pour tout le monde.</p>
+    <p class="intro">Deux façons d'avoir CloneGator : démarrer un PC sur la clé live, sans rien
+    installer, ou installer le paquet sur un Ubuntu. Gratuit, pour tout le monde.</p>
   </div>
 
   <div class="derniere">
@@ -35,10 +35,25 @@
     <h2 id="derniere-nom">CloneGator</h2>
     <p class="doux" id="derniere-date"></p>
     <div class="boutons">
-      <a class="bouton plein" id="derniere-lien"
-         href="https://github.com/kevin-belanger/CloneGator/releases/latest/download/clonegator.deb">Télécharger le .deb</a>
+      <a class="bouton plein"
+         href="https://github.com/kevin-belanger/CloneGator/releases/latest/download/clonegator-live.iso">Clé live (.iso)</a>
+      <a class="bouton contour"
+         href="https://github.com/kevin-belanger/CloneGator/releases/latest/download/clonegator.deb">Paquet Ubuntu (.deb)</a>
     </div>
-    <h3>Ou dans un terminal</h3>
+
+    <h3>Clé live</h3>
+    <p>Un système complet de 250 Mo, qui démarre sur CloneGator. Il démarre en BIOS comme en
+    UEFI, Secure Boot actif compris. Écrivez l'ISO sur une clé USB avec
+    <a href="https://rufus.ie">Rufus</a> ou <a href="https://etcher.balena.io">Balena Etcher</a>,
+    ou sous Linux :</p>
+<pre><code>wget github.com/kevin-belanger/CloneGator/releases/latest/download/clonegator-live.iso
+sudo dd if=clonegator-live.iso of=/dev/sdX bs=4M conv=fsync status=progress</code></pre>
+    <p class="doux">Au démarrage, un menu propose le clavier : Français (Canada) par défaut,
+    Canadien multilingue ou Anglais (États-Unis). Rien n'est conservé d'un démarrage à l'autre :
+    les sauvegardes vont sur un disque USB ou un partage réseau.</p>
+
+    <h3>Paquet Ubuntu</h3>
+    <p>Pour une station de clonage, ou un poste qu'on garde. Testé sur Ubuntu 24.04 :</p>
 <pre><code>wget github.com/kevin-belanger/CloneGator/releases/latest/download/clonegator.deb
 sudo apt install ./clonegator.deb
 sudo clonegator</code></pre>

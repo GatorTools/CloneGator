@@ -17,10 +17,6 @@
     return new Date(iso).toLocaleDateString("fr-CA", { year: "numeric", month: "long", day: "numeric" });
   }
 
-  function taille(octets) {
-    return (octets / 1024).toLocaleString("fr-CA", { maximumFractionDigits: 0 }) + " Kio";
-  }
-
   // Le strict nécessaire de Markdown pour les notes de version : paragraphes,
   // listes à tirets, blocs de code, `code` et **gras**.
   function notes(texte) {
@@ -62,10 +58,18 @@
     return html;
   }
 
-  // Le paquet versionné, pas la copie « clonegator.deb » qui sert à l'adresse courte.
-  function paquet(release) {
-    var debs = (release.assets || []).filter(function (a) { return /\.deb$/.test(a.name); });
-    return debs.filter(function (a) { return a.name !== "clonegator.deb"; })[0] || debs[0];
+  // Les fichiers versionnés, pas les copies « clonegator.deb » et
+  // « clonegator-live.iso » qui servent aux adresses courtes.
+  var COPIES = ["clonegator.deb", "clonegator-live.iso"];
+  function fichiers(release) {
+    return (release.assets || []).filter(function (a) {
+      return /\.(deb|iso)$/.test(a.name) && COPIES.indexOf(a.name) < 0;
+    }).sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+  }
+
+  function taille(octets) {
+    if (octets >= 1e6) return (octets / 1e6).toLocaleString("fr-CA", { maximumFractionDigits: 0 }) + " Mo";
+    return (octets / 1e3).toLocaleString("fr-CA", { maximumFractionDigits: 0 }) + " Ko";
   }
 
   function afficher(releases) {
@@ -80,13 +84,14 @@
     document.getElementById("derniere-date").textContent = "Publiée le " + date(derniere.published_at);
 
     liste.innerHTML = releases.map(function (r, rang) {
-      var fichier = paquet(r);
+      var liens = fichiers(r).map(function (f) {
+        return ' · <a href="' + echapper(f.browser_download_url) + '">' +
+          echapper(f.name) + "</a> (" + taille(f.size) + ")";
+      }).join("");
       return "<li>" +
         "<h3>" + echapper(r.name || r.tag_name) +
         (rang === 0 ? '<span class="pastille">dernière</span>' : "") + "</h3>" +
-        '<div class="doux">' + date(r.published_at) +
-        (fichier ? ' · <a href="' + echapper(fichier.browser_download_url) + '">' +
-          echapper(fichier.name) + "</a> (" + taille(fichier.size) + ")" : "") +
+        '<div class="doux">' + date(r.published_at) + liens +
         ' · <a href="' + echapper(r.html_url) + '">sur GitHub</a></div>' +
         '<div class="notes">' + notes(r.body) + "</div>" +
         "</li>";

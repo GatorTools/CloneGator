@@ -15,6 +15,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 0.6 | 2026-09-25 | Kevin + Claude | Listes à cocher : Entrée coche comme Espace, une ligne « Valider » termine le choix. Libellés de l'assistant du mode station reformulés |
 | 0.7 | 2026-09-25 | Kevin + Claude | Mode PXE inscrit au backlog (§17) : la machine distribue CloneGator par le réseau, avec un menu d'images démarrables en option et, plus tard, un renvoi vers un autre serveur de démarrage |
 | 0.8 | 2026-09-25 | Kevin + Claude | CloneGator live arrêté (§15) : Debian 13, ISO hybride BIOS et UEFI avec Secure Boot, démarrage direct sur l'accueil, trois claviers au menu de démarrage, pas de SSH, rien de conservé d'un démarrage à l'autre |
+| 0.9 | 2026-09-28 | Kevin + Claude | CloneGator live livré, essayé sur de vraies machines ; `fdisk` ajouté aux dépendances du paquet (§15) |
 
 ---
 
@@ -156,11 +157,15 @@ sauvegarde (§7.3) est donc possible sans contrainte.
 4. Mode libre et mode station (§3)
 5. Tableau des emplacements, journalisation, rapport par cible
 
+### Livré après le MVP
+
+- CloneGator live : une ISO démarrable, BIOS et UEFI, qui porte le mode libre sur n'importe quel
+  PC (§15)
+
 ### Hors MVP, envisagé plus tard
 
-- Clé ou ISO live bootable, qui porte le mode libre sur n'importe quel PC (§15, en cours)
 - Mode PXE : la machine distribue CloneGator et des images démarrables par le réseau (§17).
-  Il s'appuie sur le CloneGator live de la ligne précédente
+  Il s'appuie sur le CloneGator live (§15)
 - Partage réseau NFS pour les sauvegardes
 - Redimensionnement de la dernière partition sur une cible plus grande
 - Effacement sécurisé de disques en fin de vie

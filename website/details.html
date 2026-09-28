@@ -53,8 +53,8 @@
     <ul>
       <li><strong>une station de clonage à plusieurs baies</strong> : un disque maître dans
       une baie, des disques à écraser dans les autres, on lance et on revient plus tard ;</li>
-      <li><strong>n'importe quel PC sous Linux</strong>, pour sauvegarder son disque en image
-      ou y restaurer une image.</li>
+      <li><strong>n'importe quel PC</strong>, démarré sur la clé live CloneGator, pour
+      sauvegarder son disque en image, y restaurer une image ou le cloner.</li>
     </ul>
     <p>Le cas courant est un disque de 500 Go qui contient beaucoup moins de données. C'est
     pour ça que CloneGator ne copie que les données utiles, et que la copie intégrale,
@@ -280,6 +280,7 @@ Source  SATA1 (sda)    KINGSTON SA400S3, s/n 50026B728399DE13, 480,1 Go
     <div class="tableau">
       <table>
         <tr><th>Quoi</th><th>Où</th></tr>
+        <tr><td>Clé live</td><td>ISO hybride de 250 Mo, basée sur Debian 13 : BIOS et UEFI, Secure Boot compris. Clavier choisi au démarrage, réseau par DHCP, rien de conservé d'un démarrage à l'autre, pas d'accès SSH</td></tr>
         <tr><td>Paquet</td><td><code>.deb</code> pour Debian et Ubuntu, testé sur Ubuntu 24.04</td></tr>
         <tr><td>Dépendances</td><td><code>python3</code> (3.10 ou plus), <code>partclone</code>, <code>util-linux</code>, <code>fdisk</code>, <code>zstd</code>, <code>smartmontools</code>, <code>ntfs-3g</code>, <code>e2fsprogs</code>, <code>dosfstools</code>, <code>cifs-utils</code>. Toutes dans les dépôts de la distribution.</td></tr>
         <tr><td>Commande</td><td><code>sudo clonegator</code>, droits root nécessaires pour accéder aux disques</td></tr>
@@ -301,8 +302,8 @@ Source  SATA1 (sda)    KINGSTON SA400S3, s/n 50026B728399DE13, 480,1 Go
     <h2>Pas encore là</h2>
     <p>Envisagé pour la suite, sans date :</p>
     <ul>
-      <li>une clé USB ou une ISO démarrable, pour utiliser CloneGator sur n'importe quel PC
-      sans rien installer ;</li>
+      <li>le démarrage par le réseau (PXE) : une machine CloneGator qui distribue la clé live, et
+      d'autres images démarrables, à tous les postes du réseau ;</li>
       <li>les sauvegardes sur un partage NFS ;</li>
       <li>agrandir la dernière partition sur une cible plus grande ;</li>
       <li>l'effacement sécurisé des disques en fin de vie ;</li>
