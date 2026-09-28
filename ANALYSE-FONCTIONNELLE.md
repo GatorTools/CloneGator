@@ -567,6 +567,11 @@ redémarrage, comme le reste.
 
 Seuls les symboles que porte la police de la console sont employés.
 
+**Écran d'accueil.** Au lancement, quatre secondes : le logo GatorTools en blocs de couleur, à la
+plus grande taille qui tient dans l'écran, puis le nom et la version de CloneGator, ce qu'il
+fait, et « Un projet GatorTools ». N'importe quelle touche le passe. Sur un écran trop petit
+pour que le logo se lise, le texte seul.
+
 ---
 
 ## 10. Journalisation
