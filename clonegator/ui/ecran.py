@@ -307,7 +307,7 @@ class Ecran:
 
     # ------------------------------------------------------- écran d'accueil ---
 
-    def presenter(self, textes: list[tuple[str, str]], duree: float = 2.0) -> None:
+    def presenter(self, textes: list[tuple[str, str]], duree: float = 4.0) -> None:
         """L'écran d'accueil : le logo GatorTools en blocs de couleur, à la plus
         grande taille qui tient, et quelques lignes centrées dessous. Il reste
         `duree` secondes ; n'importe quelle touche le passe."""
