@@ -61,12 +61,20 @@ Les autres principes (P3 à P6) sont au §2 de l'analyse.
 
 ## Langue
 
-Tout est en français : interface, messages, journaux, noms de variables et de
-fonctions, commentaires, messages de commit. S'y tenir.
+L'interface parle **anglais par défaut, et français** : tout ce que voit
+l'opérateur passe par `t()` de [clonegator/langue.py](clonegator/langue.py), le
+texte français servant de clé, et l'anglais vit dans
+[clonegator/traductions.py](clonegator/traductions.py). Une phrase nouvelle à
+l'écran = une entrée de plus au catalogue (un test le vérifie).
+
+Tout le reste est en français : noms de variables et de fonctions,
+commentaires, messages de commit, documents, et journaux techniques (leur
+traduction est remise à plus tard). S'y tenir.
 
 ## Où on en est
 
-Phases 1 à 6 terminées : le MVP est livré, et le CloneGator live (ISO) aussi. Le mode PXE
+Phases 1 à 6 terminées : le MVP est livré, et le CloneGator live (ISO) aussi. Phase 7 en
+cours : interface bilingue et redessinée (plan). Le mode PXE
 (§17 de l'analyse) devient un projet séparé, GatorPXE, qui s'appuiera sur le live. `python3 -m clonegator` ouvre l'interface : mode libre
 (sauvegarder, restaurer, cloner), mode station, journaux, partage réseau.
 Reste un essai : un disque réellement usé pour SMART (plan, phase 4). Les

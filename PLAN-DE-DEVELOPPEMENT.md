@@ -1,6 +1,6 @@
 # CloneGator — Plan de développement
 
-Compagnon de [ANALYSE-FONCTIONNELLE.md](ANALYSE-FONCTIONNELLE.md), révision 1.3.
+Compagnon de [ANALYSE-FONCTIONNELLE.md](ANALYSE-FONCTIONNELLE.md), révision 1.4.
 Les renvois `§n` pointent vers l'analyse.
 
 | Rév. | Date | Auteur | Changement |
@@ -18,6 +18,7 @@ Les renvois `§n` pointent vers l'analyse.
 | 1.1 | 2026-09-25 | Kevin + Claude | Analyse 0.8 : phase 6, le CloneGator live, première étape vers le mode PXE (§17) |
 | 1.2 | 2026-09-25 | Kevin + Claude | Phase 6 : le live se construit et passe ses essais dans QEMU (BIOS, UEFI Secure Boot, clonage, sauvegarde, restauration). Le paquet dépend désormais de `fdisk` |
 | 1.3 | 2026-09-28 | Kevin + Claude | Phase 6 terminée : essai du live sur de vraies machines concluant (Kevin). ISO publiée en release et proposée sur le site |
+| 1.4 | 2026-09-28 | Kevin + Claude | Analyse 1.0 : phase 7, interface bilingue et redessinée |
 
 ---
 
@@ -464,6 +465,29 @@ Enseignements :
 **Recette (Kevin, 2026-09-28)** : l'ISO publiée en release, écrite sur une clé, est essayée sur
 de vraies machines ; Kevin juge l'essai concluant. **Phase 6 terminée.** Les versions sont
 désormais datées à la minute du commit, pour que `apt` accepte deux mises à jour du même jour.
+
+### Phase 7 — Interface bilingue et redessinée · taille M
+
+Rien ne change dans ce que fait CloneGator ; tout change dans ce qu'il montre (§9.8).
+
+- `langue.py` : `t("texte français", valeur=…)` rend le texte dans la langue choisie ; le
+  français sert de clé, l'anglais vit dans `traductions.py`. Un test vérifie que chaque `t()`
+  du code a sa traduction, avec les mêmes champs
+- tout ce que voit l'opérateur passe par `t()` : écrans, motifs de refus, verdicts, rapport,
+  tailles et débits (« 480.1 GB » / « 480,1 Go »)
+- `clavier.py` : les trois dispositions, chargées dans la console par `ckbcomp` et `loadkeys` ;
+  le paquet dépend de `console-setup` et `kbd`
+- l'écran se reconstruit à la demande : chaque étape donne à `ecran` de quoi rebâtir sa page,
+  pour qu'un changement de langue s'applique à l'écran en cours sans perdre le curseur, les
+  cases cochées ni le texte saisi
+- nouveau dessin : bande du haut, fil des étapes, barre des touches, barres de progression,
+  menus `F2` et `F3`
+- réglages : langue et clavier mémorisés dans `clonegator.json`
+- live : plus de menu visible au démarrage ni de service de clavier
+
+**Fini quand** : Kevin a revu chaque écran, en anglais et en français, sur la console de la
+station ; `F2` et `F3` y fonctionnent, `F3` est absent par SSH ; le live s'ouvre en anglais
+avec un clavier US.
 
 ---
 

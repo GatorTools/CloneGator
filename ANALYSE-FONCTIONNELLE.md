@@ -16,6 +16,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 0.7 | 2026-09-25 | Kevin + Claude | Mode PXE inscrit au backlog (§17) : la machine distribue CloneGator par le réseau, avec un menu d'images démarrables en option et, plus tard, un renvoi vers un autre serveur de démarrage |
 | 0.8 | 2026-09-25 | Kevin + Claude | CloneGator live arrêté (§15) : Debian 13, ISO hybride BIOS et UEFI avec Secure Boot, démarrage direct sur l'accueil, trois claviers au menu de démarrage, pas de SSH, rien de conservé d'un démarrage à l'autre |
 | 0.9 | 2026-09-28 | Kevin + Claude | CloneGator live livré, essayé sur de vraies machines ; `fdisk` ajouté aux dépendances du paquet (§15) |
+| 1.0 | 2026-09-28 | Kevin + Claude | Interface bilingue, anglais par défaut et français ; F2 change la langue, F3 le clavier (§9.1, §9.8). Nouvelle présentation des écrans (§9.8). Le live démarre sans menu, en anglais avec un clavier US (§15) |
 
 ---
 
@@ -447,6 +448,8 @@ Contraintes supplémentaires :
   ligne « Valider », en bas, termine le choix. Échap revient à l'étape précédente.
 - **Une opération = des étapes** : on choisit l'opération, puis les disques, puis on confirme.
 - Rien ne se lance au démarrage de la machine, sauf en mode station si on l'a demandé (§3.3).
+- **Deux langues, deux claviers d'un geste** : `F2` change la langue d'affichage, `F3` la
+  disposition du clavier, à tout moment (§9.8).
 
 ### 9.2 Accueil
 
@@ -535,6 +538,35 @@ Affiché à la fin et **jamais effacé automatiquement**. Verdict par cible, dur
 journal. C'est l'écran qu'on photographie ou qu'on note. Le même rapport est conservé avec le
 journal de l'opération, et relisible depuis « Journaux ».
 
+### 9.8 Langue, clavier et présentation
+
+**Langue.** CloneGator s'ouvre en anglais ; le français est l'autre langue. `F2` (« Change
+language ») ouvre un petit menu par-dessus l'écran, et le changement s'applique tout de suite,
+à l'écran en cours. Tout ce que voit l'opérateur est traduit, rapport compris ; les journaux
+techniques restent en français pour l'instant.
+
+**Clavier.** `F3` (« Change keyboard ») ouvre le même genre de menu : Anglais (États-Unis), par
+défaut, Français (Canada), Canadien multilingue. La disposition est chargée dans la console de la
+machine et s'applique tout de suite. Par SSH, le clavier est celui de l'ordinateur d'où l'on se
+connecte : `F3` n'y est pas proposé.
+
+Langue et clavier sont mémorisés sur une station installée (§15) ; le live les oublie au
+redémarrage, comme le reste.
+
+**Présentation.** Toujours un terminal, mais soigné :
+
+- une bande du haut, aux couleurs de CloneGator : le nom, la version, le mode ;
+- le fil des étapes de l'opération (Source › Cibles › Confirmation), l'étape en cours en
+  évidence : on sait où l'on est et ce qui reste ;
+- une question par écran, posée en clair ;
+- des colonnes alignées, le détail technique (`sdb`, partitions) en second plan ;
+- des couleurs qui ont un sens et un seul — vert : le choix et la réussite ; rouge : l'échec et
+  l'effacement ; gris : ce qui n'est pas disponible — et chaque état écrit en toutes lettres ;
+- une barre du bas qui ne montre que les touches utiles à l'écran, plus `F2` et `F3` ;
+- une barre de progression par cible.
+
+Seuls les symboles que porte la police de la console sont employés.
+
 ---
 
 ## 10. Journalisation
@@ -611,7 +643,8 @@ disque mourant réussit aujourd'hui sans que personne ne le sache.
 - **Débit** : le logiciel ne doit pas être le facteur limitant. Le clonage vers N cibles tourne au
   débit de la cible la plus lente.
 - **Démarrage** : menu affiché et disques détectés en moins de cinq secondes.
-- **Langue** : interface et journaux entièrement en français.
+- **Langue** : interface en anglais par défaut et en français, au choix de l'opérateur (§9.8).
+  Les journaux techniques restent en français ; le rapport d'une opération suit la langue choisie.
 - **Saisie** : aucune saisie de texte en fonctionnement normal, hors le nom d'une sauvegarde et
   la connexion à un partage réseau.
 - **Autonomie** : la station tourne sans surveillance ; l'écran final subsiste jusqu'à ce qu'un
@@ -649,10 +682,10 @@ PC, sans rien installer, et fournit au mode PXE (§17) les fichiers qu'il distri
 - **Une ISO hybride**, BIOS et UEFI, qu'on écrit sur une clé avec l'outil habituel (Rufus,
   Balena Etcher, `dd`) ou qu'on grave. La même construction produit le noyau, l'initrd et le
   système compressé qui servent au démarrage réseau.
-- **Au démarrage**, un menu de quelques secondes propose le clavier : Français (Canada), par
-  défaut, Canadien multilingue, Anglais (États-Unis). Puis la machine s'ouvre directement sur
-  l'accueil de CloneGator en mode libre, sans connexion ni mot de passe. Le réseau se configure
-  par DHCP.
+- **Au démarrage**, pas de menu visible : la machine s'ouvre directement sur l'accueil de
+  CloneGator en mode libre, en anglais avec un clavier US, sans connexion ni mot de passe. Échap,
+  pendant les deux premières secondes, montre le menu de démarrage, pour le dépannage. Langue et
+  clavier se changent ensuite par `F2` et `F3` (§9.8). Le réseau se configure par DHCP.
 - **Quitter** propose d'éteindre, de redémarrer ou d'ouvrir une console root pour dépanner.
 - **Pas de SSH** : le live démarre sur n'importe quel réseau, en root sans mot de passe.
 - **Rien n'est conservé d'un démarrage à l'autre** : journaux et réglages vivent en mémoire. Les
