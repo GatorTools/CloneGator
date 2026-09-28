@@ -110,12 +110,10 @@ pour publier tout de suite : `gh workflow run publier -R GatorTools/apt`.
 
 ## Site web
 
-`website/` : trois pages statiques (accueil, détails, télécharger), sans
-outil de construction, publiées sur GitHub Pages par
-`.github/workflows/site.yml` à chaque poussée qui les touche ; domaine
-`clonegator.com`. La page Télécharger lit les releases GitHub au chargement :
-publier une release suffit. Garder les textes fidèles au logiciel (écrans
-recopiés de l'interface réelle) et simples à lire pour un technicien.
+Le site n'est **pas** dans ce dépôt : il vit dans `GatorTools/GatorTools.github.io`
+(copie locale `/root/GatorTools.github.io`), publié à `gatortools.github.io` ; les pages de
+CloneGator sont sous `clonegator/`. Sa page Télécharger lit les releases GitHub au chargement :
+publier une release suffit. Garder les textes courts, fidèles au logiciel, simples à lire.
 
 ## Le live
 
@@ -158,7 +156,7 @@ redirigent, releases comprises : ne jamais recréer de dépôt `kevin-belanger/C
 capterait ces redirections. GatorPXE a son propre dépôt, `GatorTools/GatorPXE` (copie locale
 `/root/GatorPXE`), qui ne contient encore que la description du projet. Le site de l'organisation vit dans son propre dépôt, `GatorTools/GatorTools.github.io`
 (copie locale `/root/GatorTools.github.io`), publié à `gatortools.github.io` ; il porte les pages de
-CloneGator. `website/` est l'ancien site, gardé jusqu'à ce que Kevin décide de le retirer.
+CloneGator.
 Originaux des logos : `/root/visuels-gatortools/`.
 
 Station de test sous Ubuntu 24.04, système sur disque USB, **root comme seul
