@@ -151,8 +151,8 @@ envoyer des touches (`tmux send-keys`), relever l'écran (`tmux capture-pane
 Le dépôt appartient à l'organisation GitHub **GatorTools** : `github.com/GatorTools/CloneGator`,
 transféré du compte personnel `kevin-belanger` le 2026-09-28. Les anciennes adresses
 redirigent, releases comprises : ne jamais recréer de dépôt `kevin-belanger/CloneGator`, il
-capterait ces redirections. GatorPXE a son propre dépôt, `GatorTools/GatorPXE`, vide pour
-l'instant. Le site de l'organisation vit dans son propre dépôt, `GatorTools/GatorTools.github.io`
+capterait ces redirections. GatorPXE a son propre dépôt, `GatorTools/GatorPXE` (copie locale
+`/root/GatorPXE`), qui ne contient encore que la description du projet. Le site de l'organisation vit dans son propre dépôt, `GatorTools/GatorTools.github.io`
 (copie locale `/root/GatorTools.github.io`), publié à `gatortools.github.io` ; il porte les pages de
 CloneGator. `website/` est l'ancien site, gardé jusqu'à ce que Kevin décide de le retirer.
 Originaux des logos : `/root/visuels-gatortools/`.

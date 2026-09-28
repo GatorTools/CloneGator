@@ -17,6 +17,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 0.8 | 2026-09-25 | Kevin + Claude | CloneGator live arrêté (§15) : Debian 13, ISO hybride BIOS et UEFI avec Secure Boot, démarrage direct sur l'accueil, trois claviers au menu de démarrage, pas de SSH, rien de conservé d'un démarrage à l'autre |
 | 0.9 | 2026-09-28 | Kevin + Claude | CloneGator live livré, essayé sur de vraies machines ; `fdisk` ajouté aux dépendances du paquet (§15) |
 | 1.0 | 2026-09-28 | Kevin + Claude | Interface bilingue, anglais par défaut et français ; F2 change la langue, F3 le clavier (§9.1, §9.8). Nouvelle présentation des écrans (§9.8). Le live démarre sans menu, en anglais avec un clavier US (§15) |
+| 1.1 | 2026-09-28 | Kevin + Claude | Le démarrage réseau devient un logiciel séparé, GatorPXE (§17) : CloneGator n'aura plus de mode PXE, seulement ce que GatorPXE lui demandera |
 
 ---
 
@@ -165,8 +166,7 @@ sauvegarde (§7.3) est donc possible sans contrainte.
 
 ### Hors MVP, envisagé plus tard
 
-- Mode PXE : la machine distribue CloneGator et des images démarrables par le réseau (§17).
-  Il s'appuie sur le CloneGator live (§15)
+- Ce que demandera GatorPXE, le serveur de démarrage réseau de GatorTools (§17)
 - Partage réseau NFS pour les sauvegardes
 - Redimensionnement de la dernière partition sur une cible plus grande
 - Effacement sécurisé de disques en fin de vie
@@ -734,48 +734,17 @@ ou `dialog`, qui raisonnent en boîtes de dialogue successives.
 
 ---
 
-## 17. Mode PXE — à venir
+## 17. GatorPXE
 
-Inscrit au backlog le 2026-09-25. Rien n'est planifié ; les choix techniques ci-dessous sont des
-pistes, à trancher un point à la fois avant d'entrer dans le plan.
+Le démarrage par le réseau n'est plus un mode de CloneGator : c'est un logiciel à part,
+**GatorPXE**, installé sur un serveur Debian ou Ubuntu. Sa description vit dans son dépôt,
+[GatorTools/GatorPXE](https://github.com/GatorTools/GatorPXE). Il distribue par le réseau des
+images démarrables, des renvois vers d'autres serveurs, et des sauvegardes CloneGator à
+restaurer.
 
-### 17.1 L'idée
+Ce que GatorPXE demandera à CloneGator :
 
-Un troisième mode, à côté du mode libre et du mode station. On l'active en un geste depuis
-l'accueil, et la machine devient un **serveur de démarrage réseau qui distribue CloneGator**.
-L'administrateur n'a plus qu'une chose à faire : régler son DHCP pour qu'il désigne ce serveur.
-
-### 17.2 Ce que voit un poste qui démarre par le réseau
-
-- **Sans autre réglage** : CloneGator démarre directement, avec l'accueil habituel.
-- **Images supplémentaires activées** : depuis le mode PXE, l'opérateur désigne un dossier sur
-  n'importe quel disque relié à la machine, interne ou externe. Un poste qui démarre voit alors
-  un menu : « Ouvrir CloneGator » en premier, puis une entrée par image démarrable trouvée dans
-  le dossier (ISO, WIM ou autre format démarrable). Déposer un fichier dans le dossier suffit à
-  l'ajouter au menu, à la manière de Ventoy, mais par le réseau.
-- **Plus tard, dans une phase suivante** : une entrée de menu qui renvoie vers un autre serveur
-  de démarrage (un WDS d'entreprise, un autre serveur PXE Linux, ou simplement une adresse IP).
-  Les particularités de chaque cas restent à vérifier.
-
-### 17.3 Le mode station sur un poste démarré par le réseau
-
-Disponible dès la première version. À l'activation, CloneGator détecte s'il tourne depuis le
-réseau : la question du lancement automatique au démarrage (§3.3) n'est posée que si elle a un
-sens, c'est-à-dire sur un système installé.
-
-### 17.4 Ce que ça suppose
-
-- **Un CloneGator live** (§4, §15) : un système minimal contenant CloneGator, qui démarre en
-  mémoire. C'est le plus gros morceau, et il sert aussi à la clé USB démarrable.
-- **Un chargeur réseau**, iPXE pressenti : il affiche le menu, démarre une image WIM (avec
-  wimboot), renvoie vers un autre serveur, et télécharge en HTTP, bien plus vite qu'en TFTP. Les
-  ISO sont le cas délicat : beaucoup ne démarrent pas telles quelles par le réseau, il faudra les
-  essayer famille par famille.
-- **BIOS et UEFI** demandent deux chargeurs différents ; **Secure Boot** refuse iPXE sans
-  disposition particulière. C'est probablement la contrainte la plus visible côté utilisateur.
-- **Le DHCP** : un « proxy DHCP » répondrait aux seules demandes de démarrage, sans remplacer le
-  DHCP existant ni exiger qu'on le modifie. À évaluer : il rendrait le « un seul geste » vrai
-  jusqu'au bout.
-- **Les outils** (dnsmasq pour TFTP et proxy DHCP, iPXE) sont dans les dépôts Debian et Ubuntu :
-  la règle « rien hors des dépôts de la distribution » (§15, §16) tient.
-
+- joindre aux releases les fichiers du démarrage réseau du live (noyau, initrd, système
+  compressé), que la construction produit déjà (§15) ;
+- un mode de restauration dirigée : le live, démarré par le réseau, ouvre directement la
+  sauvegarde choisie dans le menu de GatorPXE et ne demande que le disque cible.

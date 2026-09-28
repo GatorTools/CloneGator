@@ -514,7 +514,7 @@ Enseignements :
 
 ```
 Phase 0 ──┬── Phase 1 ── Phase 2 ── Phase 3 ──┐
-          │                                   ├── Phase 5 ── Phase 6 ── (mode PXE, §17)
+          │                                   ├── Phase 5 ── Phase 6 ── Phase 7   (GatorPXE, dépôt à part)
           └── Phase 4 ───────────────────────┘
 ```
 
