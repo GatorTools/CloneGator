@@ -67,16 +67,27 @@ def verifier(
 
     chemins = {partition.numero: partition.chemin for partition in cible.partitions}
     for numero, fstype in sorted(fstypes.items()):
-        controle = _CONTROLES.get(fstype)
         chemin = chemins.get(numero)
-        if controle is None or chemin is None:
-            continue
-        resultat = sysexec.executer(controle + [chemin], delai=600)
-        if not resultat.ok:
-            detail = (resultat.erreur or resultat.sortie).strip().splitlines()
-            problemes.append(
-                t("partition {numero} ({fstype}) refusée par {programme}", numero=numero, fstype=fstype,
-                  programme=controle[0])
-                + (f" : {detail[-1]}" if detail else "")
-            )
+        refus = controler(chemin, fstype) if chemin else ""
+        if refus:
+            problemes.append(t("partition {numero} ({fstype}) refusée par {programme}", numero=numero,
+                               fstype=fstype, programme=refus))
     return problemes
+
+
+def controlable(fstype: str | None) -> bool:
+    return fstype in _CONTROLES
+
+
+def controler(chemin: str, fstype: str | None) -> str:
+    """Le contrôle en lecture seule d'un système de fichiers : chaîne vide s'il
+    l'accepte (ou s'il n'y a pas de contrôle pour ce type), sinon l'outil et
+    sa dernière ligne d'erreur, « ntfsfix : Error: … »."""
+    controle = _CONTROLES.get(fstype)
+    if controle is None:
+        return ""
+    resultat = sysexec.executer(controle + [chemin], delai=600)
+    if resultat.ok:
+        return ""
+    detail = (resultat.erreur or resultat.sortie).strip().splitlines()
+    return controle[0] + (f" : {detail[-1]}" if detail else "")

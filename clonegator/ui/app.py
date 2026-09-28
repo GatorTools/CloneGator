@@ -19,7 +19,7 @@ import os
 import threading
 import time
 
-from .. import VERSION, clavier, config, demarrage, devices, filesystems, health, image, journal, langue, layout
+from .. import VERSION, analyse, clavier, config, demarrage, devices, filesystems, health, image, journal, langue, layout
 from .. import storage, sysexec, texte
 from ..engine import backup, clone, fanout, sources
 from ..journal import Journal
@@ -83,6 +83,10 @@ def _etapes_sauvegarder():
 
 def _etapes_restaurer():
     return t("Restaurer"), [t("Emplacement"), t("Sauvegarde"), t("Cibles"), t("Confirmation")]
+
+
+def _etapes_analyser():
+    return t("Analyser"), [t("Disque"), t("Rapport")]
 
 
 def _etapes_station():
@@ -153,6 +157,8 @@ class Application:
                 Element(t("Cloner"), "cloner", detail=t("Copier un disque vers un ou plusieurs disques")),
                 Element(t("Mode station"), "station",
                         detail=t("Le même réglage à chaque fois, pour une machine à baies")),
+                Element(t("Analyser un disque"), "analyser",
+                        detail=t("Ce qu'il contient, et s'il est prêt à cloner")),
                 Element(t("Journaux"), "journaux", detail=t("Les dernières opérations")),
                 Element(t("Quitter"), "quitter"),
             ])
@@ -173,6 +179,8 @@ class Application:
             elif choix == "station":
                 if self.configurer_station() and not self.station():
                     return
+            elif choix == "analyser":
+                self.analyser()
             elif choix == "journaux":
                 self.journaux()
 
@@ -410,6 +418,12 @@ class Application:
                                                               AVERTISSEMENT)])
                     continue
                 self.sauvegarder(source)
+            elif choix == "analyser":
+                if source is None:
+                    self._message(t("Analyser un disque"), [Ligne.de(t("Aucun disque dans l'emplacement source."),
+                                                                      AVERTISSEMENT)])
+                    continue
+                self.analyser(source)
             elif choix == "quitter":
                 self.reglages.mode = config.MODE_LIBRE
                 self._memoriser()
@@ -468,6 +482,7 @@ class Application:
             Element(t("Cloner la source vers les cibles"), "cloner"),
             Element(t("Restaurer une sauvegarde vers les cibles"), "restaurer"),
             Element(t("Sauvegarder la source"), "sauvegarder"),
+            Element(t("Analyser la source"), "analyser"),
             Element(t("Quitter le mode station"), "quitter"),
         ])
         page = self._page(t("Changez les disques, puis choisissez une opération."), lignes, _touches_liste())
@@ -486,6 +501,27 @@ class Application:
                 continue
             retenues.append(disque)
         return retenues
+
+    # ------------------------------------------------------------- analyser ---
+
+    def analyser(self, disque: devices.Disque | None = None) -> None:
+        """§18 : un rapport de ce que contient un disque et de son état, sans
+        rien écrire ; à l'écran et au journal."""
+        if disque is None:
+            disque = self._choisir_source(_etapes_analyser, t("Quel disque voulez-vous analyser ?"))
+            if disque is None:
+                return
+        with Journal("analyse") as j:
+            try:
+                resultat = self._attendre(t("Analyse de {disque}…", disque=disque.libelle),
+                                          analyse.analyser, disque)
+            except analyse.ErreurAnalyse as erreur:
+                self._message(t("Analyser un disque"), [Ligne.de(str(erreur), AVERTISSEMENT)])
+                return
+            j.ecrire_rapport("\n".join(l.texte() for l in _rapport_analyse(resultat)))
+        self.ecran.afficher(lambda: (self._page(t("Analyse — {disque}", disque=disque.libelle),
+                                                touches=_touches_lire()),
+                                     _rapport_analyse(resultat)))
 
     # ------------------------------------------------------------- journaux ---
 
@@ -1010,7 +1046,53 @@ def _nom_etat(etat: str) -> str:
 
 def _nom_operation(operation: str) -> str:
     return {"clonage": t("Clonage"), "sauvegarde": t("Sauvegarde"),
-            "restauration": t("Restauration")}.get(operation, operation)
+            "restauration": t("Restauration"), "analyse": t("Analyse")}.get(operation, operation)
+
+
+# Chaque constat de l'analyse : sa marque et sa couleur.
+_MARQUES = {analyse.SAIN: ("●", OK), analyse.SURVEILLER: ("●", AVERTISSEMENT),
+            analyse.PROBLEME: ("✗", ECHEC), analyse.NEUTRE: ("·", DETAIL)}
+
+
+def _nom_genre(genre: str) -> str:
+    return {"efi": t("Système EFI"), "reservee": t("Réservée Microsoft"), "donnees": t("Données"),
+            "recuperation": t("Récupération"), "linux": t("Linux"), "swap": t("Swap")}.get(genre, "")
+
+
+def _ligne_constat(libelle: str, constat: analyse.Constat) -> Ligne:
+    marque, style = _MARQUES[constat.niveau]
+    return Ligne([(f"{libelle:<{COLONNE}}", DETAIL), (f"{marque} ", style), (constat.texte, NORMAL)])
+
+
+def _rapport_analyse(a: analyse.Analyse) -> list[Ligne]:
+    """Le rapport d'analyse : le disque, son état, ses partitions, le verdict."""
+    d = a.disque
+    lignes = [_ligne_disque(t("Disque"), d), _ligne_constat(t("Santé"), a.sante),
+              _ligne_constat(t("Table"), a.table), _ligne_constat(t("Démarrage"), a.demarrage)]
+    if a.sauvegardes:
+        lignes.append(_ligne_constat(t("Sauvegardes"), analyse.Constat(
+            analyse.NEUTRE, t("contient des sauvegardes CloneGator : jamais proposé comme cible"))))
+    lignes.append(Ligne.de(""))
+
+    for p in a.partitions:
+        marque, style = _MARQUES[p.etat.niveau]
+        utilise = t("{taille} utilisés", taille=texte.taille(p.utilise)) if p.utilise else ""
+        lignes.append(Ligne([
+            (f"{p.numero:>3}  {_nom_genre(p.genre):<20} {(p.partition.fstype or '—'):<10} "
+             f"{texte.taille(p.partition.taille):>9}  {utilise:<18} ", NORMAL),
+            (f"{marque} ", style), (p.etat.texte, style if p.etat.niveau != analyse.SAIN else NORMAL)]))
+    if a.partitions:
+        lignes.append(Ligne.de(""))
+
+    verdict = a.verdict
+    marque, style = _MARQUES[verdict.niveau]
+    lignes.append(Ligne([(f"{t('Verdict'):<{COLONNE}}", DETAIL), (f"{marque} {verdict.texte}", style)]))
+    for conseil in a.conseils:
+        lignes.append(Ligne([(" " * COLONNE, NORMAL), (f"→ {conseil}", AVERTISSEMENT)]))
+    if a.volume and verdict.niveau != analyse.PROBLEME:
+        lignes.append(_ligne_champ(t("À copier"), t("{taille}, environ {duree}", taille=texte.taille(a.volume),
+                                                    duree=texte.duree(a.volume / DEBIT_LECTURE))))
+    return lignes
 
 
 def _rapport_clonage(operation: clone.Clonage, j: Journal, titre: str) -> list[Ligne]:

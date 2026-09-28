@@ -21,6 +21,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 1.2 | 2026-09-28 | Kevin + Claude | Une partition non reconnue de plus de 1 Go, copiée en entier, est annoncée à la confirmation (§6.2) |
 | 1.3 | 2026-09-28 | Kevin + Claude | GatorPXE intègre CloneGator à son menu par ses fichiers de démarrage réseau ; plus de restauration dirigée, la restauration passe par CloneGator (§17) |
 | 1.4 | 2026-09-28 | Kevin + Claude | NTFS : le secours écrit sur la cible est une copie du secteur d'amorçage, pour qu'un maître au secours absent ou périmé donne des cibles saines (§6.2) |
+| 1.5 | 2026-09-28 | Kevin + Claude | Analyser un disque : un rapport à l'écran, en lecture seule, de ce que contient un disque et de son état (§18) |
 
 ---
 
@@ -467,8 +468,9 @@ CloneGator 1.0
    2.  Restaurer
    3.  Cloner
    4.  Mode station
-   5.  Journaux
-   6.  Quitter
+   5.  Analyser un disque
+   6.  Journaux
+   7.  Quitter
 ```
 
 « Journaux » permet de relire les dernières opérations et leur rapport sans quitter
@@ -755,3 +757,36 @@ réseau où sont les sauvegardes.
 
 Plus tard, en option : lire sur la ligne de commande du noyau l'adresse d'un partage de
 sauvegardes transmise par GatorPXE, pour la pré-remplir ; seul le mot de passe resterait à taper.
+
+---
+
+## 18. Analyser un disque
+
+Un rapport à l'écran de ce que contient un disque et de son état, sans rien copier : avant de
+cloner un maître, pour comprendre un disque qu'on ne connaît pas, ou pour diagnostiquer un disque
+suspect. Depuis l'accueil (« Analyser un disque ») et en mode station (« Analyser la source »).
+
+**En lecture seule, toujours.** Le disque passe en lecture seule noyau pendant l'analyse, comme
+la source d'une copie (P1). Un disque utilisé par le système n'est pas proposé (P2).
+
+**Ce que dit le rapport :**
+
+- **le disque** : emplacement, modèle, numéro de série, taille ;
+- **sa santé** : le résumé SMART (§12) ;
+- **sa table** : GPT ou MBR, nombre de partitions ; pour une GPT, la présence de la table de
+  secours en fin de disque ;
+- **son démarrage** : en UEFI, la partition système EFI et le chargeur qu'elle porte (Windows,
+  Linux, générique) ; en MBR, la présence du code d'amorçage ;
+- **chaque partition** : type, système de fichiers, taille, espace utilisé, état — sain, hiberné
+  ou mal démonté, chiffré, refusé par son outil de contrôle en lecture seule — et la façon dont
+  CloneGator la copierait (blocs utilisés ou copie intégrale, avec la durée estimée) ;
+- **un verdict** : prêt à cloner, à corriger avant de cloner (avec ce qu'il faut faire), ou en
+  mauvais état.
+
+Vert pour ce qui est sain, jaune pour ce qui est à surveiller, rouge pour ce qui empêche ou
+ralentit une copie. Le rapport est enregistré dans les journaux comme celui d'une opération.
+
+L'analyse est rapide — quelques secondes, le temps des contrôles en lecture seule — et ne relit
+pas tout le disque. **Plus tard, en option** : un test de lecture de toute la surface, pour le
+diagnostic d'un disque suspect.
+

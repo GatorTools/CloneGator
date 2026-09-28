@@ -1,6 +1,6 @@
 # CloneGator — Plan de développement
 
-Compagnon de [ANALYSE-FONCTIONNELLE.md](ANALYSE-FONCTIONNELLE.md), révision 1.5.
+Compagnon de [ANALYSE-FONCTIONNELLE.md](ANALYSE-FONCTIONNELLE.md), révision 1.6.
 Les renvois `§n` pointent vers l'analyse.
 
 | Rév. | Date | Auteur | Changement |
@@ -20,6 +20,7 @@ Les renvois `§n` pointent vers l'analyse.
 | 1.3 | 2026-09-28 | Kevin + Claude | Phase 6 terminée : essai du live sur de vraies machines concluant (Kevin). ISO publiée en release et proposée sur le site |
 | 1.4 | 2026-09-28 | Kevin + Claude | Analyse 1.0 : phase 7, interface bilingue et redessinée |
 | 1.5 | 2026-09-28 | Kevin + Claude | Phase 7 terminée : interface bilingue et redessinée, écran d'accueil, indicateur d'attente, revue de Kevin sur la console de la station |
+| 1.6 | 2026-09-28 | Kevin + Claude | Analyse 1.5 : phase 8, analyser un disque |
 
 ---
 
@@ -507,6 +508,17 @@ Enseignements :
   revoient tels que l'opérateur les voit. Une invite de connexion lancée par le système sur la
   même console avale alors les touches injectées.
 - Ne reconstruire l'ISO qu'en fin de phase : pendant la revue, le paquet suffit.
+
+### Phase 8 — Analyser un disque · taille S
+
+- `analyse.py` : un rapport structuré, sans affichage — disque, santé, table, démarrage,
+  partitions, verdict ; il réutilise `health`, `layout`, `filesystems`, `verify` (contrôles en
+  lecture seule) et `montage` (sonde de la partition EFI)
+- l'interface ne fait que le rendre : accueil et mode station, rapport à l'écran et au journal
+- tests : le verdict et la lecture de la partition EFI, sans matériel ; un essai sur les baies
+
+**Fini quand** : Kevin a analysé sur la station un maître sain, un Windows hiberné et un disque
+vierge, et le rapport lui dit clairement quoi faire.
 
 ---
 
