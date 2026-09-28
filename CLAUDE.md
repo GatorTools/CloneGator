@@ -89,7 +89,7 @@ python3 -m clonegator cloner --source SATA1 --cibles SATA2 SATA3        # ÉCRAS
 python3 -m clonegator sauvegarder Win11-labo --source SATA1
 python3 -m clonegator restaurer <dossier> --cibles SATA2                # ÉCRASE
 python3 -m unittest tests.test_emplacements tests.test_layout tests.test_fanout \
-    tests.test_sante tests.test_interface tests.test_traductions tests.test_secours_ntfs \
+    tests.test_sante tests.test_interface tests.test_traductions tests.test_secours_ntfs tests.test_analyse \
     tests.test_clone_banc tests.test_images_banc
 ```
 
