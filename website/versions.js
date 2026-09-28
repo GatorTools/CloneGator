@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  var DEPOT = "kevin-belanger/CloneGator";
+  var DEPOT = "GatorTools/CloneGator";
   var liste = document.getElementById("versions");
 
   function echapper(texte) {

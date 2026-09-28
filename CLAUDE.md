@@ -66,8 +66,8 @@ fonctions, commentaires, messages de commit. S'y tenir.
 
 ## Où on en est
 
-Phases 1 à 6 terminées : le MVP est livré, et le CloneGator live (ISO) aussi. Prochain
-chantier au backlog : le mode PXE (§17 de l'analyse), qui s'appuie sur le live. `python3 -m clonegator` ouvre l'interface : mode libre
+Phases 1 à 6 terminées : le MVP est livré, et le CloneGator live (ISO) aussi. Le mode PXE
+(§17 de l'analyse) devient un projet séparé, GatorPXE, qui s'appuiera sur le live. `python3 -m clonegator` ouvre l'interface : mode libre
 (sauvegarder, restaurer, cloner), mode station, journaux, partage réseau.
 Reste un essai : un disque réellement usé pour SMART (plan, phase 4). Les
 sous-commandes servent au développement.
@@ -92,7 +92,7 @@ Phase 5 terminée, MVP livré. `./outils/construire-paquet.sh` construit le
 `.deb` dans `dist/` (dépôt commité exigé). Publier : étiquette
 `v<version>` (`~` → `-`, `+` → `.`), `gh release create --target <commit complet>` (l'abrégé est refusé), et joindre aussi une
 copie nommée `clonegator.deb`, et une copie de l'ISO nommée `clonegator-live.iso`, pour les adresses courtes
-`github.com/kevin-belanger/CloneGator/releases/latest/download/clonegator.deb`.
+`github.com/GatorTools/CloneGator/releases/latest/download/clonegator.deb`.
 
 ## Site web
 
@@ -136,6 +136,12 @@ envoyer des touches (`tmux send-keys`), relever l'écran (`tmux capture-pane
 -p`). La console physique se lit dans `/dev/vcs1` (sans les accents).
 
 ## Environnement
+
+Le dépôt appartient à l'organisation GitHub **GatorTools** : `github.com/GatorTools/CloneGator`,
+transféré du compte personnel `kevin-belanger` le 2026-09-28. Les anciennes adresses
+redirigent, releases comprises : ne jamais recréer de dépôt `kevin-belanger/CloneGator`, il
+capterait ces redirections. GatorPXE a son propre dépôt, `GatorTools/GatorPXE`, vide pour
+l'instant. Un site de l'organisation remplacera à terme le site de `website/`.
 
 Station de test sous Ubuntu 24.04, système sur disque USB, **root comme seul
 utilisateur**. Le dépôt vit dans `~/clonegator`, soit `/root/clonegator`.
