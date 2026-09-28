@@ -21,6 +21,7 @@ Les renvois `§n` pointent vers l'analyse.
 | 1.4 | 2026-09-28 | Kevin + Claude | Analyse 1.0 : phase 7, interface bilingue et redessinée |
 | 1.5 | 2026-09-28 | Kevin + Claude | Phase 7 terminée : interface bilingue et redessinée, écran d'accueil, indicateur d'attente, revue de Kevin sur la console de la station |
 | 1.6 | 2026-09-28 | Kevin + Claude | Analyse 1.5 : phase 8, analyser un disque |
+| 1.7 | 2026-09-28 | Kevin + Claude | Analyse 1.6 : le démarrage réseau du live, `clonegator-live-pxe.tar`, construit par `construire-live.sh` et joint à chaque release |
 
 ---
 
