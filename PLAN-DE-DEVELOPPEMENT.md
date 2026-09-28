@@ -1,6 +1,6 @@
 # CloneGator — Plan de développement
 
-Compagnon de [ANALYSE-FONCTIONNELLE.md](ANALYSE-FONCTIONNELLE.md), révision 1.4.
+Compagnon de [ANALYSE-FONCTIONNELLE.md](ANALYSE-FONCTIONNELLE.md), révision 1.5.
 Les renvois `§n` pointent vers l'analyse.
 
 | Rév. | Date | Auteur | Changement |
@@ -19,6 +19,7 @@ Les renvois `§n` pointent vers l'analyse.
 | 1.2 | 2026-09-25 | Kevin + Claude | Phase 6 : le live se construit et passe ses essais dans QEMU (BIOS, UEFI Secure Boot, clonage, sauvegarde, restauration). Le paquet dépend désormais de `fdisk` |
 | 1.3 | 2026-09-28 | Kevin + Claude | Phase 6 terminée : essai du live sur de vraies machines concluant (Kevin). ISO publiée en release et proposée sur le site |
 | 1.4 | 2026-09-28 | Kevin + Claude | Analyse 1.0 : phase 7, interface bilingue et redessinée |
+| 1.5 | 2026-09-28 | Kevin + Claude | Phase 7 terminée : interface bilingue et redessinée, écran d'accueil, indicateur d'attente, revue de Kevin sur la console de la station |
 
 ---
 
@@ -466,7 +467,7 @@ Enseignements :
 de vraies machines ; Kevin juge l'essai concluant. **Phase 6 terminée.** Les versions sont
 désormais datées à la minute du commit, pour que `apt` accepte deux mises à jour du même jour.
 
-### Phase 7 — Interface bilingue et redessinée · taille M
+### Phase 7 — Interface bilingue et redessinée · taille M · **terminée le 2026-09-28**
 
 Rien ne change dans ce que fait CloneGator ; tout change dans ce qu'il montre (§9.8).
 
@@ -488,6 +489,24 @@ Rien ne change dans ce que fait CloneGator ; tout change dans ce qu'il montre (�
 **Fini quand** : Kevin a revu chaque écran, en anglais et en français, sur la console de la
 station ; `F2` et `F3` y fonctionnent, `F3` est absent par SSH ; le live s'ouvre en anglais
 avec un clavier US.
+
+**Bilan (2026-09-28).** Tout l'écran passe par `t()` (plus de 250 phrases, catalogue vérifié
+par un test) ; `F2` rebâtit l'écran en cours dans l'autre langue sans rien perdre ; `F3`
+charge la disposition dans la console, et n'est pas proposé par SSH. Ajoutés en cours de
+revue, à la demande de Kevin : l'écran d'accueil (logo GatorTools en blocs de couleur, à la
+taille de l'écran, quatre secondes), un indicateur d'attente animé sous le contenu pendant les
+étapes lentes (touches tapées entre-temps oubliées), l'écran effacé en quittant sur la
+console. Revue de Kevin terminée sur la console de la station.
+
+Enseignements :
+
+- La police de la console (Uni2-Fixed16) n'a ni `✓` ni `○` ni demi-blocs, et dessine le trait
+  épais `━` comme le trait fin : barres de progression en `█` et `░`. Le noir en gras y devient
+  gris : les touches de la barre du bas sont en pastilles vertes.
+- La vraie console se photographie par `/dev/fb0` et se pilote par TIOCSTI : les écrans se
+  revoient tels que l'opérateur les voit. Une invite de connexion lancée par le système sur la
+  même console avale alors les touches injectées.
+- Ne reconstruire l'ISO qu'en fin de phase : pendant la revue, le paquet suffit.
 
 ---
 

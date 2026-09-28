@@ -73,8 +73,8 @@ traduction est remise à plus tard). S'y tenir.
 
 ## Où on en est
 
-Phases 1 à 6 terminées : le MVP est livré, et le CloneGator live (ISO) aussi. Phase 7 en
-cours : interface bilingue et redessinée (plan). Le mode PXE
+Phases 1 à 7 terminées : le MVP est livré, le CloneGator live (ISO) aussi, et l'interface
+est bilingue (anglais par défaut, français) et redessinée. Le mode PXE
 (§17 de l'analyse) devient un projet séparé, GatorPXE, qui s'appuiera sur le live. `python3 -m clonegator` ouvre l'interface : mode libre
 (sauvegarder, restaurer, cloner), mode station, journaux, partage réseau.
 Reste un essai : un disque réellement usé pour SMART (plan, phase 4). Les
