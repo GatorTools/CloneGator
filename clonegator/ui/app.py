@@ -382,12 +382,11 @@ class Application:
     def station(self) -> bool:
         """L'accueil du mode station (§9.4). Rend False pour quitter CloneGator,
         True pour revenir à l'accueil du mode libre."""
-        # Le tableau des baies se rafraîchit tout seul ; les vérifications
-        # lentes (sauvegardes présentes, SMART), faites ici une première fois,
-        # sont ensuite gardées en mémoire.
-        self._attendre(t("Vérification des disques…"), _verifier_cibles, devices.inventaire())
+        # Le tableau des baies se rafraîchit tout seul, en arrière-plan : les
+        # vérifications lentes (sauvegardes présentes, SMART) ne gèlent pas l'écran.
         while True:
-            choix = self.ecran.choisir(self._accueil_station, intervalle=2.0)
+            choix = self.ecran.choisir(self._accueil_station, intervalle=2.0,
+                                       attente=t("Vérification des disques…"))
             reglage = self.reglages.station
             if choix is None:
                 continue

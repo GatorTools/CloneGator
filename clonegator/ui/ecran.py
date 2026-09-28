@@ -73,6 +73,43 @@ _LOGO_VERT = "logo_vert"
 _LOGO_BLANC = "logo_blanc"
 
 
+class _Fond:
+    """Une reconstruction d'écran en arrière-plan : une seule à la fois."""
+
+    def __init__(self, construire):
+        self._construire = construire
+        self._fil: threading.Thread | None = None
+        self._pret = None
+
+    def lancer(self) -> None:
+        if self.en_cours():
+            return
+
+        def travail():
+            try:
+                self._pret = self._construire()
+            except Exception:  # l'écran garde l'état précédent ; réessayé au tour suivant
+                self._pret = None
+
+        self._pret = None
+        self._fil = threading.Thread(target=travail, name="rafraichissement", daemon=True)
+        self._fil.start()
+
+    def en_cours(self) -> bool:
+        return self._fil is not None and self._fil.is_alive()
+
+    def resultat(self):
+        """La page et la liste reconstruites, une fois prêtes ; None sinon."""
+        if self._fil is None or self._fil.is_alive():
+            return None
+        pret, self._pret, self._fil = self._pret, None, None
+        return pret
+
+    def attendre(self) -> None:
+        if self._fil is not None:
+            self._fil.join()
+
+
 class Ecran:
     def __init__(self, fenetre, console_physique: bool = False):
         self.fenetre = fenetre
@@ -392,30 +429,45 @@ class Ecran:
 
     # ------------------------------------------------------------ interactions ---
 
-    def choisir(self, construire, intervalle: float | None = None):
+    def choisir(self, construire, intervalle: float | None = None, attente: str = ""):
         """Rend la valeur choisie (ou les valeurs cochées), ou None si
         l'opérateur revient en arrière. `construire()` rend la page et la liste ;
-        il est rappelé après F2 et, si `intervalle` est donné, à ce rythme : le
-        tableau des baies du mode station se met ainsi à jour tout seul (§9.4)."""
-        page, liste = construire()
+        il est rappelé après F2.
+
+        Avec `intervalle`, l'écran se reconstruit aussi à ce rythme — le tableau
+        des baies du mode station suit ainsi les disques branchés (§9.4) — et
+        toujours en arrière-plan, car cela peut prendre des secondes (sondes,
+        SMART) : l'écran reste réactif. Le premier affichage passe par
+        l'indicateur d'attente, avec le message `attente`."""
+        fond = _Fond(construire) if intervalle is not None else None
+        page, liste = self.patienter(attente, construire) if fond else construire()
         dernier = time.monotonic()
-        while True:
-            self._dessiner_liste(page, liste)
-            touche = self.touche(0.5 if intervalle else None)
-            perime = intervalle is not None and time.monotonic() - dernier >= intervalle
-            if touche == RECONSTRUIRE or (touche is None and perime):
-                ancienne = liste
-                page, liste = construire()
-                liste.reprendre(ancienne)
-                dernier = time.monotonic()
-                continue
-            if touche is None:
-                continue
-            action = liste.touche(touche)
-            if action == VALIDER:
-                return liste.choix
-            if action == RETOUR:
-                return None
+        try:
+            while True:
+                self._dessiner_liste(page, liste)
+                touche = self.touche(0.5 if fond else None)
+
+                if fond and (touche == RECONSTRUIRE or time.monotonic() - dernier >= intervalle):
+                    fond.lancer()
+                    dernier = time.monotonic()
+                nouvelle = fond.resultat() if fond else construire() if touche == RECONSTRUIRE else None
+                if nouvelle is not None:
+                    page, nouvelle_liste = nouvelle
+                    nouvelle_liste.reprendre(liste)
+                    liste = nouvelle_liste
+
+                if touche is None or touche == RECONSTRUIRE:
+                    continue
+                action = liste.touche(touche)
+                if action == VALIDER:
+                    return liste.choix
+                if action == RETOUR:
+                    return None
+        finally:
+            if fond and fond.en_cours():
+                # Une sonde ne doit jamais tenir un disque monté quand l'opération
+                # choisie commence : on attend qu'elle ait fini.
+                self.patienter(attente, fond.attendre)
 
     def _dessiner_liste(self, page: Page, liste: Liste) -> None:
         entete = list(page.entete)
