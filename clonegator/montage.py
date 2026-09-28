@@ -84,4 +84,9 @@ def sonde(partition: str, fstype: str | None):
     finally:
         if monte:
             demonter(cible)
+        else:
+            try:
+                os.rmdir(cible)  # le montage a échoué : le dossier ne sert plus
+            except OSError:
+                pass
         sysexec.executer(["blockdev", "--setrw", partition])
