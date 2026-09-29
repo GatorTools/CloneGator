@@ -6,7 +6,7 @@ Duplication et sauvegarde de disques, en français, au clavier.
 - **Sauvegarder** un disque vers une image, sur un disque USB ou un partage réseau Windows.
 - **Restaurer** une image vers un ou plusieurs disques.
 - **Mode station** : pour une machine à baies, un réglage enregistré — on change les
-  disques et on lance, sans rien choisir. Lancement automatique au démarrage en option.
+  disques et on lance, sans rien choisir.
 
 ## Installer et lancer
 

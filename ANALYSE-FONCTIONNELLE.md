@@ -23,6 +23,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 1.4 | 2026-09-28 | Kevin + Claude | NTFS : le secours écrit sur la cible est une copie du secteur d'amorçage, pour qu'un maître au secours absent ou périmé donne des cibles saines (§6.2) |
 | 1.5 | 2026-09-28 | Kevin + Claude | Analyser un disque : un rapport à l'écran, en lecture seule, de ce que contient un disque et de son état (§18) |
 | 1.6 | 2026-09-28 | Kevin + Claude | Le démarrage réseau du live, publié avec chaque release (`clonegator-live-pxe.tar`), shim signé compris pour Secure Boot (§15, §17) |
+| 1.7 | 2026-09-29 | Kevin + Claude | Lancement automatique du mode station retiré : sans connexion automatique à la console, il ne rendait pas le service attendu ; l'assistant n'a plus que deux étapes (§3.3, §15) |
 
 ---
 
@@ -129,15 +130,16 @@ choisir d'autre. Trois opérations en profitent :
 - **restaurer** une image vers les cibles ;
 - **sauvegarder** la source vers une image.
 
-On l'active par un assistant : emplacement source, emplacements cibles, et, en option,
-**lancement automatique au démarrage** — la machine s'allume alors directement sur l'accueil du
-mode station, même après une coupure de courant. Rien ne se lance automatiquement en dehors de
-ce mode.
+On l'active par un assistant en deux étapes : l'emplacement source, puis les emplacements cibles.
 
 Le réglage est enregistré (§15). On quitte le mode station à tout moment pour revenir au mode
-libre, ce qui coupe aussi le lancement automatique ; y revenir rouvre l'assistant pré-rempli avec
-le dernier réglage, que quelques Entrée suffisent à reprendre. Au redémarrage, CloneGator reprend
-le mode dans lequel on l'a laissé.
+libre ; y revenir rouvre l'assistant pré-rempli avec le dernier réglage, que quelques Entrée
+suffisent à reprendre. Quand on relance CloneGator, il reprend le mode dans lequel on l'a laissé.
+
+**Pas de lancement automatique au démarrage de la machine.** Il a existé, puis a été retiré le
+2026-09-29 : sans connexion automatique à la console, il ne rendait pas le service attendu, et
+ajoutait une question à l'assistant. On lance CloneGator soi-même ; le live, lui, s'ouvre
+toujours directement sur CloneGator (§15).
 
 **Seuls les emplacements internes, SATA et NVMe, peuvent faire partie d'un réglage de station.**
 En mode station, tout disque présent dans un emplacement cible est effacé sans qu'on l'ait
@@ -456,7 +458,7 @@ Contraintes supplémentaires :
   directement. Dans une liste à cocher, Entrée, Espace ou le numéro cochent et décochent ; une
   ligne « Valider », en bas, termine le choix. Échap revient à l'étape précédente.
 - **Une opération = des étapes** : on choisit l'opération, puis les disques, puis on confirme.
-- Rien ne se lance au démarrage de la machine, sauf en mode station si on l'a demandé (§3.3).
+- Rien ne se lance au démarrage de la machine, sauf dans le live (§15).
 - **Deux langues, deux claviers d'un geste** : `F2` change la langue d'affichage, `F3` la
   disposition du clavier, à tout moment (§9.8).
 
@@ -677,10 +679,11 @@ disque mourant réussit aujourd'hui sans que personne ne le sache.
 installé sur un disque USB.
 
 - code dans `/usr/lib/clonegator/`, commande `clonegator` dans le `PATH`
-- configuration dans `/etc/clonegator/` : le mode courant, le réglage du mode station et son
-  lancement automatique (§3.3), la connexion au partage réseau sans son mot de passe (§7.4)
+- configuration dans `/etc/clonegator/` : le mode courant, le réglage du mode station (§3.3),
+  la connexion au partage réseau sans son mot de passe (§7.4), la langue et le clavier (§9.8)
 - journaux dans `/var/log/clonegator/`
-- unité systemd optionnelle pour lancer l'interface au démarrage sur la console
+- à la mise à jour, l'unité systemd de lancement automatique laissée par une version antérieure
+  est retirée (§3.3)
 - dépendances déclarées par le paquet : `python3`, `partclone`, `util-linux`, `fdisk` (qui porte
   `sfdisk` depuis Debian 13), `zstd`,
   `smartmontools`, `ntfs-3g`, `e2fsprogs`, `dosfstools`, `cifs-utils`. Aucune bibliothèque Python tierce
@@ -710,8 +713,7 @@ PC, sans rien installer. Le même live se démarre aussi par le réseau.
 - **Rien n'est conservé d'un démarrage à l'autre** : journaux et réglages vivent en mémoire. Les
   sauvegardes, elles, vont sur un disque USB ou un partage réseau, avec leur journal dans le
   dossier de l'image. Le rapport d'une opération reste à l'écran jusqu'à ce qu'on le lise.
-- **Mode station** disponible ; la question du lancement automatique n'y est pas posée, elle
-  n'a de sens que sur un système installé (§17.3).
+- **Mode station** disponible, comme sur un système installé.
 
 ---
 

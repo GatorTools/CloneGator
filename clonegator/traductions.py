@@ -285,17 +285,6 @@ ANGLAIS: dict[str, str] = {
     "Sélectionnez les emplacements cibles.": "Select the target locations.",
     "Leur contenu sera effacé à chaque clonage.": "Their content will be erased at every clone.",
     "Continuer avec {n} emplacement(s)": "Continue with {n} location(s)",
-    "Voulez-vous que CloneGator démarre automatiquement en mode station au démarrage de cet ordinateur ?":
-        "Do you want CloneGator to start automatically in station mode when this computer starts?",
-    "Oui": "Yes",
-    "Non": "No",
-    "La machine démarre directement sur le mode station": "The machine starts straight into station mode",
-    "On lance CloneGator soi-même": "You start CloneGator yourself",
-    "Lancement automatique": "Automatic start",
-    "Le mode station est activé, mais pas son lancement automatique :":
-        "Station mode is on, but not its automatic start:",
-    "unité systemd non écrite : {erreur}": "systemd unit not written: {erreur}",
-    "{commande} a échoué : {erreur}": "{commande} failed: {erreur}",
 
     # ------------------------------------------------------------------ SMART
     "SMART : {niveau}": "SMART: {niveau}",

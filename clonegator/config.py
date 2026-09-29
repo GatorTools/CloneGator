@@ -1,8 +1,8 @@
 """Réglages enregistrés (§15 de l'analyse), dans `/etc/clonegator/`.
 
-Ce qui survit à un redémarrage : le mode courant, le réglage du mode station
-avec son lancement automatique, la connexion au partage réseau — **sans son
-mot de passe**, jamais enregistré (§7.4) —, la langue et le clavier (§9.8).
+Ce qui survit à un redémarrage : le mode courant, le réglage du mode station,
+la connexion au partage réseau — **sans son mot de passe**, jamais enregistré
+(§7.4) —, la langue et le clavier (§9.8).
 
 Un fichier absent ou illisible donne les réglages par défaut : mode libre, rien
 de mémorisé. Il ne doit jamais empêcher CloneGator de démarrer.
@@ -27,7 +27,6 @@ MODE_STATION = "station"
 class ReglageStation:
     source: str  # clé d'emplacement (§3.1), stable d'un démarrage à l'autre
     cibles: list[str] = field(default_factory=list)
-    lancement_auto: bool = False
 
 
 @dataclass
@@ -72,7 +71,6 @@ def lire() -> Reglages:
             station=ReglageStation(
                 source=station["source"],
                 cibles=list(station.get("cibles", [])),
-                lancement_auto=bool(station.get("lancement_auto", False)),
             ) if station else None,
             reseau=ConnexionReseau(**{
                 cle: str(valeur) for cle, valeur in (brut.get("reseau") or {}).items()

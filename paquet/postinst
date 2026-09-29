@@ -1,0 +1,12 @@
+#!/bin/sh
+# Le lancement automatique du mode station a été retiré (analyse, §3.3) : une
+# unité laissée par une version précédente est retirée à la mise à jour, et la
+# console rendue à son invite de connexion. Sans elle, rien à faire.
+set -e
+if [ "$1" = "configure" ] && [ -f /etc/systemd/system/clonegator.service ]; then
+    systemctl disable clonegator.service >/dev/null 2>&1 || true
+    systemctl enable getty@tty1.service >/dev/null 2>&1 || true
+    rm -f /etc/systemd/system/clonegator.service
+    systemctl daemon-reload || true
+fi
+exit 0

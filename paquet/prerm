@@ -1,6 +1,6 @@
 #!/bin/sh
-# À la désinstallation, rendre la console à son invite de connexion si le
-# mode station l'avait prise (unité écrite par CloneGator, pas par le paquet).
+# À la désinstallation, rendre la console à son invite de connexion si une
+# ancienne version l'avait prise pour le mode station (voir postinst).
 set -e
 if [ "$1" = "remove" ] && [ -f /etc/systemd/system/clonegator.service ]; then
     systemctl disable clonegator.service >/dev/null 2>&1 || true

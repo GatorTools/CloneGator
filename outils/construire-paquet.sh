@@ -34,7 +34,7 @@ sed -i "s/^VERSION = .*/VERSION = \"$version\"/" "$racine/usr/lib/clonegator/clo
 install -m 755 paquet/clonegator "$racine/usr/bin/clonegator"
 install -m 644 README.md "$racine/usr/share/doc/clonegator/README.md"
 install -m 644 LICENSE "$racine/usr/share/doc/clonegator/copyright"
-install -m 755 paquet/prerm paquet/postrm "$racine/DEBIAN/"
+install -m 755 paquet/postinst paquet/prerm paquet/postrm "$racine/DEBIAN/"
 sed "s/@VERSION@/$version/" paquet/control > "$racine/DEBIAN/control"
 
 mkdir -p dist

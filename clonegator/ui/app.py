@@ -90,10 +90,7 @@ def _etapes_analyser():
 
 
 def _etapes_station():
-    etapes = [t("Source"), t("Cibles")]
-    if not demarrage.en_live():
-        etapes.append(t("Démarrage"))
-    return t("Mode station"), etapes
+    return t("Mode station"), [t("Source"), t("Cibles")]
 
 
 class ArretDemande(Exception):
@@ -326,7 +323,7 @@ class Application:
             operation, etapes = _etapes_station()
             return self._page(titre, touches=touches, operation=operation, etapes=etapes, etape=etape)
 
-        etape = 0
+        etape = 0  # 0 : la source, 1 : les cibles
         source = precedent.source if precedent else None
         cibles = list(precedent.cibles) if precedent else []
         while True:
@@ -355,36 +352,9 @@ class Application:
                 if choix is None:
                     etape = 0
                     continue
-                cibles = choix
-                etape = 2
-                if demarrage.en_live():
-                    # Le live démarre déjà sur CloneGator, et n'enregistre rien.
-                    self.reglages.station = config.ReglageStation(source, cibles, False)
-                    self.reglages.mode = config.MODE_STATION
-                    self._memoriser()
-                    return True
-            else:
-                def construire():
-                    liste = Liste("", [
-                        Element(t("Oui"), True, detail=t("La machine démarre directement sur le mode station")),
-                        Element(t("Non"), False, detail=t("On lance CloneGator soi-même")),
-                    ])
-                    liste.placer(bool(precedent and precedent.lancement_auto))
-                    return page(2, t("Voulez-vous que CloneGator démarre automatiquement en mode station "
-                                     "au démarrage de cet ordinateur ?"), _touches_liste()), liste
-                choix = self.ecran.choisir(construire)
-                if choix is None:
-                    etape = 1
-                    continue
-                self.reglages.station = config.ReglageStation(source, cibles, bool(choix))
+                self.reglages.station = config.ReglageStation(source, choix)
                 self.reglages.mode = config.MODE_STATION
                 self._memoriser()
-                motif = demarrage.activer() if choix else demarrage.desactiver()
-                if motif:
-                    self._message(t("Lancement automatique"), [
-                        Ligne.de(t("Le mode station est activé, mais pas son lancement automatique :"),
-                                 AVERTISSEMENT),
-                        Ligne.de(motif)])
                 return True
 
     def station(self) -> bool:
@@ -427,9 +397,6 @@ class Application:
             elif choix == "quitter":
                 self.reglages.mode = config.MODE_LIBRE
                 self._memoriser()
-                motif = demarrage.desactiver()
-                if motif:
-                    self._message(t("Lancement automatique"), [Ligne.de(motif, AVERTISSEMENT)])
                 return True
 
     def _accueil_station(self):
