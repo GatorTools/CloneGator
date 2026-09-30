@@ -66,7 +66,7 @@ class ClonageSurLeBanc(unittest.TestCase):
                 cible = next(c for c in clonage.cibles if c.disque.chemin == BOUCLES[nom])
                 self.assertEqual(cible.etat, clone.REUSSIE, cible.motif)
                 self.assertManifesteConforme(cible.partitions[3])
-                self.assertTrue(any("fsck.fat" in a for a in cible.avertissements), cible.avertissements)
+                self.assertIn("partition 1 : défaut de la source, copié tel quel", cible.avertissements)
 
     def test_source_aux_numeros_non_contigus(self):
         clonage = self.cloner("source-trous", ["cible-egale", "cible-sale"])

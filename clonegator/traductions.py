@@ -55,11 +55,11 @@ ANGLAIS: dict[str, str] = {
     "swap, recréée à la copie": "swap, recreated when copied",
     "chiffrée": "encrypted",
     "rien à vérifier": "nothing to check",
-    "refusée par {controle}, sera copiée telle quelle": "rejected by {controle}, will be copied as is",
-    "partition {numero} : déjà refusée sur la source par {controle}, copiée telle quelle":
-        "partition {numero}: already rejected on the source by {controle}, copied as is",
-    "partition {numero} : déjà refusée par {controle}, sauvegardée telle quelle":
-        "partition {numero}: already rejected by {controle}, backed up as is",
+    "défaut de la source, copié tel quel": "source defect, copied as is",
+    "partition {numero} : défaut de la source, copié tel quel": "partition {numero}: source defect, copied as is",
+    "partition {numero} : défaut de la source, sauvegardé tel quel": "partition {numero}: source defect, backed up as is",
+    "Détail": "Detail",
+    "partition {numero} — {detail}": "partition {numero} — {detail}",
     "Faire un arrêt complet de Windows (Maj + Arrêter), puis analyser à nouveau.":
         "Fully shut down Windows (Shift + Shut down), then analyze again.",
     "Réparer le système de fichiers (fsck), puis analyser à nouveau.":

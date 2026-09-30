@@ -1059,6 +1059,13 @@ def _rapport_analyse(a: analyse.Analyse) -> list[Ligne]:
     if a.volume and verdict.niveau != analyse.PROBLEME:
         lignes.append(_ligne_champ(t("À copier"), t("{taille}, environ {duree}", taille=texte.taille(a.volume),
                                                     duree=texte.duree(a.volume / DEBIT_LECTURE))))
+
+    details = [p for p in a.partitions if p.detail]
+    if details:
+        lignes.append(Ligne.de(""))
+    for rang, p in enumerate(details):
+        lignes.append(_ligne_champ(t("Détail") if rang == 0 else "",
+                                   t("partition {numero} — {detail}", numero=p.numero, detail=p.detail)))
     return lignes
 
 

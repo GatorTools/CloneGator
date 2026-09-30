@@ -525,12 +525,15 @@ class Clonage:
         # Un défaut déjà présent sur la source est copié fidèlement : le noter,
         # sans le reprocher aux cibles.
         defauts = {plan.entree.numero: self.source.defaut(plan) for plan in copiees}
+        for numero, defaut in defauts.items():
+            if defaut:
+                _log.warning("partition %d : défaut de la source, copié tel quel — %s", numero, defaut)
         fstypes = {plan.entree.numero: plan.fstype for plan in copiees if not defauts[plan.entree.numero]}
         for cible in self.actives:
             for numero, defaut in defauts.items():
                 if defaut:
-                    cible.avertissements.append(t("partition {numero} : déjà refusée sur la source par {controle}, "
-                                                  "copiée telle quelle", numero=numero, controle=defaut))
+                    cible.avertissements.append(t("partition {numero} : défaut de la source, copié tel quel",
+                                                  numero=numero))
             relu = devices.decrire(cible.disque.chemin) or cible.disque
             problemes = verify.verifier(self.table, tete, relu, fstypes)
             if problemes:

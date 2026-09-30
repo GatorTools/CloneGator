@@ -207,8 +207,9 @@ class Sauvegarde:
             defaut = self.source.defaut(plan)
             if defaut:
                 decrite["defaut"] = defaut
-                self.avertissements.append(t("partition {numero} : déjà refusée par {controle}, sauvegardée telle quelle",
-                                             numero=numero, controle=defaut))
+                self.avertissements.append(t("partition {numero} : défaut de la source, sauvegardé tel quel",
+                                             numero=numero))
+                _log.warning("partition %d : défaut de la source, sauvegardé tel quel — %s", numero, defaut)
         self._compresser(flux, fichier, t("partition {numero}", numero=numero))
         decrite["fichier"] = fichier
 

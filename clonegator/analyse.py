@@ -73,6 +73,7 @@ class EtatPartition:
     moteur: str  # comme filesystems : partclone, brut, swap, aucun
     volume: int  # octets qu'une copie lirait
     utilise: int | None  # octets occupés, quand on sait le lire
+    detail: str = ""  # le refus de l'outil de contrôle, tel qu'il l'écrit
 
 
 @dataclass
@@ -211,6 +212,7 @@ def _partition(entree: layout.Entree, partition: Partition, table: layout.Table,
     choix = filesystems.choisir(partition, entree.etendue)
     volume = filesystems.volume_a_copier(partition, choix)
     etat = Constat(SAIN, t("sain"))
+    detail = ""
 
     if choix.moteur == filesystems.AUCUN:
         etat = Constat(NEUTRE, t("partition étendue"))
@@ -234,14 +236,14 @@ def _partition(entree: layout.Entree, partition: Partition, table: layout.Table,
             etat = Constat(NEUTRE, t("rien à vérifier"))
     elif verify.controlable(partition.fstype):
         # Une copie reproduit ce défaut tel quel, sans le reprocher aux cibles.
-        refus = verify.controler(partition.chemin, partition.fstype)
-        if refus:
-            etat = Constat(SURVEILLER, t("refusée par {controle}, sera copiée telle quelle", controle=refus))
+        detail = verify.controler(partition.chemin, partition.fstype)
+        if detail:
+            etat = Constat(SURVEILLER, t("défaut de la source, copié tel quel"))
 
     utilise = partition.utilise
     if utilise is None and choix.moteur == filesystems.PARTCLONE:
         utilise = filesystems.espace_utilise(partition)
-    return EtatPartition(entree.numero, _genre(entree), partition, etat, choix.moteur, volume, utilise)
+    return EtatPartition(entree.numero, _genre(entree), partition, etat, choix.moteur, volume, utilise, detail)
 
 
 def _genre(entree: layout.Entree) -> str:

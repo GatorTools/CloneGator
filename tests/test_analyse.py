@@ -83,7 +83,7 @@ class SurDesDisquesDeTest(unittest.TestCase):
 
         a = analyse.analyser(self.disque("label: gpt\n,,EBD0A0A2-B9E5-4433-87C0-68B6B72699C7\n", preparer))
         self.assertEqual(a.partitions[0].etat.niveau, SURVEILLER)
-        self.assertIn("ntfsfix", a.partitions[0].etat.texte)
+        self.assertIn("ntfsfix", a.partitions[0].detail)
         self.assertEqual(a.verdict.niveau, SURVEILLER)
 
     def test_ext4_sain_sur_mbr_sans_code_d_amorcage(self):
