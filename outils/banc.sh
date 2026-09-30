@@ -90,6 +90,15 @@ creer_source_gpt() {
     reglages "$boucle"
 
     mkfs.vfat -F 32 -n ESP "${boucle}p1" >/dev/null
+    # Une étiquette vide dans la racine, comme Windows en laisse parfois :
+    # fsck.fat la refuse, le disque démarre quand même.
+    python3 - "${boucle}p1" <<'FIN'
+import sys
+with open(sys.argv[1], "r+b") as esp:
+    debut = esp.read(4 << 20)
+    esp.seek(debut.index(b"ESP        \x08", 1024))
+    esp.write(b" " * 11)
+FIN
 
     if command -v mkfs.ntfs >/dev/null 2>&1; then
         mkfs.ntfs -Q -F -L Windows "${boucle}p2" >/dev/null

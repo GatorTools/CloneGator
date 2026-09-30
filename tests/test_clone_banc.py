@@ -6,7 +6,8 @@ cibles du banc sont écrasées.
     python3 -m unittest -v tests.test_clone_banc
 
 Ce que les baies ne peuvent pas donner sans sacrifier le maître du port 1 :
-une source numérotée 1, 2, 3, 5 et une cible plus petite que la source.
+une source numérotée 1, 2, 3, 5, une cible plus petite que la source, et une
+partition EFI que fsck.fat refuse (étiquette vide).
 """
 
 from __future__ import annotations
@@ -65,6 +66,7 @@ class ClonageSurLeBanc(unittest.TestCase):
                 cible = next(c for c in clonage.cibles if c.disque.chemin == BOUCLES[nom])
                 self.assertEqual(cible.etat, clone.REUSSIE, cible.motif)
                 self.assertManifesteConforme(cible.partitions[3])
+                self.assertTrue(any("fsck.fat" in a for a in cible.avertissements), cible.avertissements)
 
     def test_source_aux_numeros_non_contigus(self):
         clonage = self.cloner("source-trous", ["cible-egale", "cible-sale"])

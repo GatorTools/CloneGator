@@ -203,6 +203,12 @@ class Sauvegarde:
         else:
             flux = self.source.flux_partclone(plan, self.journal)
             decrite["programme"] = plan.choix.programme
+            # Pour qu'une restauration ne reproche pas ce défaut à ses cibles.
+            defaut = self.source.defaut(plan)
+            if defaut:
+                decrite["defaut"] = defaut
+                self.avertissements.append(t("partition {numero} : déjà refusée par {controle}, sauvegardée telle quelle",
+                                             numero=numero, controle=defaut))
         self._compresser(flux, fichier, t("partition {numero}", numero=numero))
         decrite["fichier"] = fichier
 

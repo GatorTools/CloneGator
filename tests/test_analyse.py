@@ -72,7 +72,7 @@ class SurDesDisquesDeTest(unittest.TestCase):
         a = analyse.analyser(self.disque(None))
         self.assertEqual(a.verdict.niveau, NEUTRE)
 
-    def test_ntfs_au_secours_efface_est_un_probleme(self):
+    def test_ntfs_au_secours_efface_est_a_surveiller(self):
         def preparer(boucle):
             _executer("mkntfs", "-q", "-f", f"{boucle}p1")
             fd = os.open(f"{boucle}p1", os.O_RDWR)
@@ -82,9 +82,9 @@ class SurDesDisquesDeTest(unittest.TestCase):
             os.close(fd)
 
         a = analyse.analyser(self.disque("label: gpt\n,,EBD0A0A2-B9E5-4433-87C0-68B6B72699C7\n", preparer))
-        self.assertEqual(a.partitions[0].etat.niveau, PROBLEME)
+        self.assertEqual(a.partitions[0].etat.niveau, SURVEILLER)
         self.assertIn("ntfsfix", a.partitions[0].etat.texte)
-        self.assertEqual(a.verdict.niveau, PROBLEME)
+        self.assertEqual(a.verdict.niveau, SURVEILLER)
 
     def test_ext4_sain_sur_mbr_sans_code_d_amorcage(self):
         a = analyse.analyser(self.disque("label: dos\n,,83\n",

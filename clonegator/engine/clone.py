@@ -521,12 +521,16 @@ class Clonage:
 
     def _verifier(self, tete: bytes) -> None:
         sysexec.executer(["udevadm", "settle"], delai=60)
-        fstypes = {
-            plan.entree.numero: plan.fstype
-            for plan in self.plans
-            if plan.choix.moteur == filesystems.PARTCLONE
-        }
+        copiees = [plan for plan in self.plans if plan.choix.moteur == filesystems.PARTCLONE]
+        # Un défaut déjà présent sur la source est copié fidèlement : le noter,
+        # sans le reprocher aux cibles.
+        defauts = {plan.entree.numero: self.source.defaut(plan) for plan in copiees}
+        fstypes = {plan.entree.numero: plan.fstype for plan in copiees if not defauts[plan.entree.numero]}
         for cible in self.actives:
+            for numero, defaut in defauts.items():
+                if defaut:
+                    cible.avertissements.append(t("partition {numero} : déjà refusée sur la source par {controle}, "
+                                                  "copiée telle quelle", numero=numero, controle=defaut))
             relu = devices.decrire(cible.disque.chemin) or cible.disque
             problemes = verify.verifier(self.table, tete, relu, fstypes)
             if problemes:

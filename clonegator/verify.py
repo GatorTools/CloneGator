@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 from . import layout, sysexec
 from .devices import Disque
@@ -30,6 +31,12 @@ _CONTROLES = {
     "ext4": ["e2fsck", "-n", "-f"],
     "vfat": ["fsck.fat", "-n"],
 }
+
+# Lignes de ces outils qui n'expliquent rien : bannière de version, étapes,
+# bilan final, réponses aux questions de réparation, détails en retrait.
+_BRUIT = re.compile(
+    r"^(\S+ [\d.]+ \(.*\)|Pass \d.*|\S+: \d+(/\d+)? files.*|Leaving filesystem unchanged\.|.*\? no|\s.*|)$"
+)
 
 
 def verifier(
@@ -79,12 +86,17 @@ def controlable(fstype: str | None) -> bool:
 def controler(chemin: str, fstype: str | None) -> str:
     """Le contrôle en lecture seule d'un système de fichiers : chaîne vide s'il
     l'accepte (ou s'il n'y a pas de contrôle pour ce type), sinon l'outil et
-    sa dernière ligne d'erreur, « ntfsfix : Error: … »."""
+    la raison de son refus, « fsck.fat : Volume label '' … is not valid. »
+
+    La raison : la dernière erreur de l'outil, ou à défaut le premier constat
+    de sa sortie."""
     controle = _CONTROLES.get(fstype)
     if controle is None:
         return ""
     resultat = sysexec.executer(controle + [chemin], delai=600)
     if resultat.ok:
         return ""
-    detail = (resultat.erreur or resultat.sortie).strip().splitlines()
-    return controle[0] + (f" : {detail[-1]}" if detail else "")
+    erreurs = [ligne for ligne in resultat.erreur.splitlines() if not _BRUIT.match(ligne)]
+    constats = [ligne for ligne in resultat.sortie.splitlines() if not _BRUIT.match(ligne)]
+    raison = erreurs[-1] if erreurs else constats[0] if constats else ""
+    return controle[0] + (f" : {raison.strip()}" if raison else "")

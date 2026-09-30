@@ -24,7 +24,7 @@ import logging
 import os
 from dataclasses import dataclass
 
-from .. import devices, filesystems, image, layout, sysexec, texte
+from .. import devices, filesystems, image, layout, sysexec, texte, verify
 from ..devices import Disque
 from ..journal import Journal
 from ..langue import t
@@ -145,6 +145,10 @@ class SourceDisque:
     def secours_ntfs(self, plan: Plan) -> tuple[int, bytes] | None:
         return filesystems.secours_ntfs(self._partitions[plan.entree.numero].chemin)
 
+    def defaut(self, plan: Plan) -> str:
+        """Le refus du contrôle de ce système de fichiers ; vide s'il l'accepte."""
+        return verify.controler(self._partitions[plan.entree.numero].chemin, plan.fstype)
+
     def volume(self, plan: Plan) -> int:
         """Octets que la copie de cette partition lira : sert à estimer la
         progression d'une restauration future."""
@@ -233,6 +237,10 @@ class SourceImage:
             return None
         with open(self.image.chemin(secours["fichier"]), "rb") as fichier:
             return int(secours["position"]), fichier.read()
+
+    def defaut(self, plan: Plan) -> str:
+        """Le refus du contrôle, constaté sur le disque sauvegardé."""
+        return self._partitions[plan.entree.numero].get("defaut", "")
 
     def _decompresser(self, fichier: str, nom: str, journal: Journal) -> Flux:
         processus = sysexec.Processus(

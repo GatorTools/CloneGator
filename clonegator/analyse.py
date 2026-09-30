@@ -233,9 +233,10 @@ def _partition(entree: layout.Entree, partition: Partition, table: layout.Table,
         else:
             etat = Constat(NEUTRE, t("rien à vérifier"))
     elif verify.controlable(partition.fstype):
+        # Une copie reproduit ce défaut tel quel, sans le reprocher aux cibles.
         refus = verify.controler(partition.chemin, partition.fstype)
         if refus:
-            etat = Constat(PROBLEME, t("refusée par {controle}", controle=refus))
+            etat = Constat(SURVEILLER, t("refusée par {controle}, sera copiée telle quelle", controle=refus))
 
     utilise = partition.utilise
     if utilise is None and choix.moteur == filesystems.PARTCLONE:

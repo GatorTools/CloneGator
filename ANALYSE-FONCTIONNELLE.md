@@ -24,6 +24,7 @@ Successeur de `clonesrv`, réécrit à partir de zéro.
 | 1.5 | 2026-09-28 | Kevin + Claude | Analyser un disque : un rapport à l'écran, en lecture seule, de ce que contient un disque et de son état (§18) |
 | 1.6 | 2026-09-28 | Kevin + Claude | Le démarrage réseau du live, publié avec chaque release (`clonegator-live-pxe.tar`), shim signé compris pour Secure Boot (§15, §17) |
 | 1.7 | 2026-09-29 | Kevin + Claude | Lancement automatique du mode station retiré : sans connexion automatique à la console, il ne rendait pas le service attendu ; l'assistant n'a plus que deux étapes (§3.3, §15) |
+| 1.8 | 2026-09-30 | Kevin + Claude | Un défaut de système de fichiers déjà présent sur la source est copié tel quel et noté, sans faire échouer la vérification des cibles (§11) ; à l'analyse, il est à surveiller (§18) |
 
 ---
 
@@ -624,6 +625,11 @@ en lecture seule (`fsck -n` selon le type). Elle ne relit pas les données. Elle
 échecs les plus fréquents — table non écrite, partition tronquée, système de fichiers
 inutilisable — pour un coût négligeable.
 
+Le contrôle juge la copie, pas la source : un défaut que son outil trouve déjà sur la source (une
+étiquette de volume vide qu'une partition EFI de Windows porte parfois, et que `fsck.fat` refuse)
+est reproduit fidèlement, noté au rapport de chaque cible, et n'en fait pas échouer la copie. Une
+sauvegarde note ces défauts avec ses partitions, pour que la restauration en tienne compte.
+
 La **vérification complète** relit intégralement les cibles et compare. Elle est proposée, jamais
 imposée, et son écran annonce clairement qu'elle double la durée de l'opération.
 
@@ -784,7 +790,8 @@ la source d'une copie (P1). Un disque utilisé par le système n'est pas propos�
 - **son démarrage** : en UEFI, la partition système EFI et le chargeur qu'elle porte (Windows,
   Linux, générique) ; en MBR, la présence du code d'amorçage ;
 - **chaque partition** : type, système de fichiers, taille, espace utilisé, état — sain, hiberné
-  ou mal démonté, chiffré, refusé par son outil de contrôle en lecture seule — et la façon dont
+  ou mal démonté, chiffré, refusé par son outil de contrôle en lecture seule (à surveiller : une
+  copie reproduit ce défaut tel quel, §11) — et la façon dont
   CloneGator la copierait (blocs utilisés ou copie intégrale, avec la durée estimée) ;
 - **un verdict** : prêt à cloner, à corriger avant de cloner (avec ce qu'il faut faire), ou en
   mauvais état.
