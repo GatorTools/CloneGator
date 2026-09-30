@@ -223,10 +223,11 @@ def _lisezmoi(meta: dict) -> str:
         return "\n".join(lignes) + "\n"
 
     lignes += [
-        "2. Tête du disque, puis table de partitions :",
+        "2. Tête du disque, table de partitions, puis code d'amorçage (que sfdisk efface) :",
         f"     dd if={TETE} of=/dev/sdX conv=fsync",
         f"     grep -v -e '^device:' -e '^last-lba:' {TABLE} \\",
         "       | sfdisk --wipe always --wipe-partitions always /dev/sdX",
+        f"     dd if={TETE} of=/dev/sdX bs=440 count=1 conv=notrunc,fsync",
         "",
         "3. Chaque partition. Le nom de la partition N est /dev/sdXN, ou /dev/nvme0n1pN",
         "   pour un disque NVMe :",

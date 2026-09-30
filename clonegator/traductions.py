@@ -341,6 +341,7 @@ ANGLAIS: dict[str, str] = {
     "disque retiré ou hors ligne pendant la copie": "disk removed or offline during the copy",
     "trop petite : {taille} pour {requis} requis": "too small: {taille} for {requis} required",
     "ouverture en écriture impossible : {erreur}": "cannot open for writing: {erreur}",
+    "écriture du code d'amorçage impossible : {erreur}": "cannot write the boot code: {erreur}",
     "écriture de la table impossible : {erreur}": "cannot write the partition table: {erreur}",
     "cible disparue après l'écriture de la table": "target vanished after the partition table was written",
     "partitions absentes après l'écriture de la table : {liste}":

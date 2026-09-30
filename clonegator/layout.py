@@ -35,6 +35,9 @@ TYPES_ETENDUS = frozenset({"5", "f", "85"})
 # 32 secteurs d'entrées et 1 secteur d'en-tête.
 SECTEURS_GPT_SECOURS = 33
 
+# Octets du secteur 0 qui portent le code d'amorçage d'un MBR, avant la table.
+CODE_AMORCE = 440
+
 _NUMERO_FINAL = re.compile(r"(\d+)$")
 
 # Un champ d'une ligne de partition de `sfdisk --dump` : clé=valeur, la valeur

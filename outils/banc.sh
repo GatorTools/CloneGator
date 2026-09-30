@@ -84,6 +84,9 @@ creer_source_gpt() {
         -n 2:0:+1G      -t 2:0700 -c 2:"Windows" \
         -n 3:0:0        -t 3:8300 -c 3:"Donnees" \
         "$boucle" >/dev/null
+    # Du code d'amorçage dans le MBR de protection, comme sur un disque converti
+    # de MBR en GPT : sfdisk l'efface en écrivant la table.
+    printf 'code-amorce-banc' | dd of="$boucle" conv=notrunc status=none
     reglages "$boucle"
 
     mkfs.vfat -F 32 -n ESP "${boucle}p1" >/dev/null

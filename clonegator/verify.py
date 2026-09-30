@@ -31,9 +31,6 @@ _CONTROLES = {
     "vfat": ["fsck.fat", "-n"],
 }
 
-# Octets du secteur 0 qui portent le code d'amorçage d'un MBR, avant la table.
-_CODE_AMORCE = 440
-
 
 def verifier(
     table_source: layout.Table,
@@ -57,10 +54,10 @@ def verifier(
     try:
         fd = sysexec.ouvrir(cible.chemin)
         try:
-            tete = os.pread(fd, _CODE_AMORCE, 0)
+            tete = os.pread(fd, layout.CODE_AMORCE, 0)
         finally:
             os.close(fd)
-        if tete != tete_source[:_CODE_AMORCE]:
+        if tete != tete_source[:layout.CODE_AMORCE]:
             problemes.append(t("code d'amorçage différent de la source"))
     except OSError as erreur:
         problemes.append(t("tête du disque illisible : {erreur}", erreur=erreur.strerror))

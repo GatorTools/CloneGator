@@ -236,7 +236,7 @@ class Clonage:
         self._interrompu()
 
         self.etape = t("table de partitions")
-        self._ecrire_tables()
+        self._ecrire_tables(tete)
         self._interrompu()
 
         for rang, plan in enumerate(self.plans, start=1):
@@ -299,13 +299,26 @@ class Clonage:
         self._diffuser(flux, octets, t("tête du disque"), lambda c: c.disque.chemin)
         return tete
 
-    def _ecrire_tables(self) -> None:
+    def _ecrire_tables(self, tete: bytes) -> None:
         sysexec.executer(["udevadm", "settle"], delai=60)
         for cible in self.actives:
             resultat = layout.reproduire(self.table, cible.disque.chemin)
             if not resultat.ok:
                 cible.conclure(ECHEC, t("écriture de la table impossible : {erreur}",
                                         erreur=_derniere_ligne(resultat.erreur)))
+                continue
+            # En effaçant l'ancienne table, sfdisk remet à zéro le code
+            # d'amorçage que la tête venait d'écrire : le reposer.
+            try:
+                fd = sysexec.ouvrir(cible.disque.chemin, ecriture=True)
+                try:
+                    os.pwrite(fd, tete[:layout.CODE_AMORCE], 0)
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+            except OSError as erreur:
+                cible.conclure(ECHEC, t("écriture du code d'amorçage impossible : {erreur}",
+                                        erreur=erreur.strerror))
 
         # Le noyau crée les nouvelles partitions, udev leurs nœuds : attendre
         # qu'ils existent avant de relire chaque cible.
